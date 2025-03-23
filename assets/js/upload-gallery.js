@@ -32,9 +32,7 @@ let selectedFiles = [];
 let currentGalleryItems = [];
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
-let loadedFiles = []; // Track files already loaded
-const initialFilesToShow = 20; // Number of files to show initially
-const filesPerLoad = 10; // Number of files to load on each scroll
+const maxFilesToShow = 20; // Number of files to display
 
 // ------------------------
 // Upload Functions
@@ -260,9 +258,6 @@ function setupGalleryFunctionality() {
 
   // Load initial random subset
   fetchGalleryItems();
-
-  // Add infinite scroll
-  window.addEventListener('scroll', handleInfiniteScroll);
 }
 
 function fetchGalleryItems() {
@@ -278,17 +273,9 @@ function handleGalleryResponse(data) {
   }
 
   if (data && data.success && data.files) {
-    // Filter out files that have already been loaded
-    const newFiles = data.files.filter(file => !loadedFiles.includes(file.url));
-    
-    // Select a random subset of new files
-    const randomFiles = getRandomSubset(newFiles, filesPerLoad);
-    
-    // Add the new files to the loadedFiles array
-    loadedFiles = [...loadedFiles, ...randomFiles.map(file => file.url)];
-    
-    // Add the new files to the gallery
-    currentGalleryItems = [...currentGalleryItems, ...randomFiles];
+    // Select a random subset of files
+    const randomFiles = getRandomSubset(data.files, maxFilesToShow);
+    currentGalleryItems = randomFiles;
     displayGalleryItems();
   } else {
     console.error("Gallery API error:", data);
@@ -300,12 +287,6 @@ function getRandomSubset(files, count) {
   // Shuffle the array and select the first `count` items
   const shuffled = files.sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
-}
-
-function handleInfiniteScroll() {
-  if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
-    fetchGalleryItems();
-  }
 }
 
 function displayGalleryItems() {
