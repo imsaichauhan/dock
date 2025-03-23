@@ -334,6 +334,40 @@ function openFullscreen(index) {
   currentGalleryIndex = index;
   displayFullscreenItem();
   galleryFullscreen.classList.remove('hidden');
+  
+  // Add event listeners for fullscreen interactions
+  fullscreenContent.addEventListener('click', handleFullscreenClick);
+  galleryFullscreen.addEventListener('click', handleFullscreenBackgroundClick);
+}
+
+function closeFullscreen() {
+  galleryFullscreen.classList.add('hidden');
+  if (slideshowInterval) {
+    clearInterval(slideshowInterval);
+    slideshowInterval = null;
+    fullscreenPlay.textContent = '▶';
+  }
+  
+  // Remove event listeners when closing fullscreen
+  fullscreenContent.removeEventListener('click', handleFullscreenClick);
+  galleryFullscreen.removeEventListener('click', handleFullscreenBackgroundClick);
+}
+
+function handleFullscreenClick(event) {
+  // Prevent event bubbling to the galleryFullscreen click handler
+  event.stopPropagation();
+  
+  // Pause the slideshow if it's running
+  if (slideshowInterval) {
+    toggleSlideshow();
+  }
+}
+
+function handleFullscreenBackgroundClick(event) {
+  // Close fullscreen if clicking outside the image
+  if (!fullscreenContent.contains(event.target)) {
+    closeFullscreen();
+  }
 }
 
 function displayFullscreenItem() {
@@ -373,15 +407,6 @@ function toggleSlideshow() {
       navigateGallery(1);
     }, 3000);
     fullscreenPlay.textContent = '⏸';
-  }
-}
-
-function closeFullscreen() {
-  galleryFullscreen.classList.add('hidden');
-  if (slideshowInterval) {
-    clearInterval(slideshowInterval);
-    slideshowInterval = null;
-    fullscreenPlay.textContent = '▶';
   }
 }
 
