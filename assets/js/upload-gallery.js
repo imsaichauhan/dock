@@ -32,6 +32,9 @@ let selectedFiles = [];
 let currentGalleryItems = [];
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
+let loadedFiles = []; // Track files already loaded
+const initialFilesToShow = 20; // Number of files to show initially
+const filesPerLoad = 10; // Number of files to load on each scroll
 
 // ------------------------
 // Upload Functions
@@ -254,8 +257,12 @@ function setupGalleryFunctionality() {
     console.error('Missing gallery DOM elements');
     return;
   }
+
+  // Load initial random subset
   fetchGalleryItems();
-  setInterval(fetchGalleryItems, 5 * 60 * 1000);
+
+  // Add infinite scroll
+  window.addEventListener('scroll', handleInfiniteScroll);
 }
 
 function fetchGalleryItems() {
@@ -269,11 +276,19 @@ function handleGalleryResponse(data) {
   if (scriptTag) {
     document.body.removeChild(scriptTag);
   }
-  
-  console.log("Gallery API response:", data);
-  
+
   if (data && data.success && data.files) {
-    currentGalleryItems = data.files;
+    // Filter out files that have already been loaded
+    const newFiles = data.files.filter(file => !loadedFiles.includes(file.url));
+    
+    // Select a random subset of new files
+    const randomFiles = getRandomSubset(newFiles, filesPerLoad);
+    
+    // Add the new files to the loadedFiles array
+    loadedFiles = [...loadedFiles, ...randomFiles.map(file => file.url)];
+    
+    // Add the new files to the gallery
+    currentGalleryItems = [...currentGalleryItems, ...randomFiles];
     displayGalleryItems();
   } else {
     console.error("Gallery API error:", data);
@@ -281,8 +296,31 @@ function handleGalleryResponse(data) {
   }
 }
 
+function getRandomSubset(files, count) {
+  // Shuffle the array and select the first `count` items
+  const shuffled = files.sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
+
+function handleInfiniteScroll() {
+  if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+    fetchGalleryItems();
+  }
+}
+
 function displayGalleryItems() {
   galleryGrid.innerHTML = '';
+
+  // Show skeleton loading if no files are loaded yet
+  if (currentGalleryItems.length === 0) {
+    galleryGrid.innerHTML = `
+      <div class="gallery-loading">
+        ${Array.from({ length: 12 }).map(() => `<div class="skeleton-item"></div>`).join('')}
+      </div>
+    `;
+  }
+
+  // Display loaded files
   currentGalleryItems.forEach((file, index) => {
     const item = document.createElement('div');
     item.className = 'gallery-item';
@@ -299,7 +337,6 @@ function displayGalleryItems() {
         this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
       };
       mediaContainer.appendChild(img);
-      
     } else if (file.mimeType.startsWith('video/')) {
       const videoWrapper = document.createElement('div');
       videoWrapper.className = 'video-wrapper';
@@ -380,7 +417,6 @@ function displayFullscreenItem() {
     img.src = file.url.replace('&sz=w1000', '&sz=w1920');
     img.alt = file.name;
     fullscreenContent.appendChild(img);
-    
   } else if (file.mimeType.startsWith('video/')) {
     const iframe = document.createElement('iframe');
     iframe.src = file.url;
