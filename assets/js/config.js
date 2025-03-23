@@ -3,7 +3,7 @@ const CONFIG = {
     // API endpoint to your Login & RSVP Google Apps Script
     API_URL: 'https://script.google.com/macros/s/AKfycbxwlh-fT7rGM-kohqyo7Z9d27RcRPE1rFP7qLlO381ratGnS0NeCH1AGsUYkv-qk3AO/exec',
     // New API endpoint for Upload & Gallery functionality
-    UPLOAD_GALLERY_API_URL: 'https://script.google.com/macros/s/AKfycbxP2zo3gk4H6NtWJ28baIZqWhgnVX8FroNVi3mKJKbzc9Favm4CIVmz1XBNw6IKfE2g/exec',
+    UPLOAD_GALLERY_API_URL: 'https://script.google.com/macros/s/AKfycbyZ12fluKl3KnbNl1oIiKPK4E9uS4SbiDY00L07Dv1b65bTgi8TrBI8m_olo082f5P0/exec',
     
     // WhatsApp group link (only visible for attendees)
     WHATSAPP_LINK: 'https://chat.whatsapp.com/EGyQOOsqYllJZRNtNDTvQ9',
