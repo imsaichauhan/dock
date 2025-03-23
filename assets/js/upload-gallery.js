@@ -272,10 +272,20 @@ function handleGalleryResponse(data) {
   if (scriptTag) {
     document.body.removeChild(scriptTag);
   }
+  
+  console.log("Gallery API response:", data);
+  
   if (data && data.success && data.files) {
     currentGalleryItems = data.files;
+    
+    // Log first item for debugging
+    if (data.files.length > 0) {
+      console.log("First gallery item:", data.files[0]);
+    }
+    
     displayGalleryItems();
   } else {
+    console.error("Gallery API error:", data);
     galleryGrid.innerHTML = '<div class="gallery-error">Failed to load gallery.</div>';
   }
 }
@@ -288,11 +298,14 @@ function displayGalleryItems() {
     item.className = 'gallery-item';
     const ext = getFileExtension(file.name).toLowerCase();
     const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${ext}`);
+    
+    // Log for debugging
+    console.log("Processing file:", file.name, "URL:", file.url);
+    
     if (isImage) {
       const img = document.createElement('img');
-      // For images, use direct embed URL.
-      const fileId = extractFileId(file.url);
-      img.src = "https://drive.google.com/uc?export=view&id=" + fileId;
+      // Use the URL directly from the backend
+      img.src = file.url;
       img.alt = file.name;
       if (CONFIG.GALLERY.LAZY_LOAD) {
         img.loading = 'lazy';
@@ -300,33 +313,43 @@ function displayGalleryItems() {
       item.appendChild(img);
     } else {
       const video = document.createElement('video');
-      // For videos, use direct download URL.
-      const fileId = extractFileId(file.url);
-      video.src = "https://drive.google.com/uc?export=download&id=" + fileId;
+      // Use the URL directly from the backend
+      video.src = file.url;
       video.controls = true;
       item.appendChild(video);
     }
+    
     if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
       const uploader = document.createElement('div');
       uploader.className = 'gallery-uploader';
       uploader.textContent = file.uploader;
       item.appendChild(uploader);
     }
+    
     item.addEventListener('click', () => openFullscreen(index));
     galleryGrid.appendChild(item);
   });
 }
 
-// Helper to extract file ID from URL (supports URLs of format uc?export=...)
+// Updated function - removed as we're using direct URLs now
 function extractFileId(url) {
-  // Try to match common patterns
-  let id = "";
-  const regex = /(?:id=)([a-zA-Z0-9_-]+)/;
+  // First try to match id parameter
+  const regex = /[?&]id=([a-zA-Z0-9_-]+)/;
   const match = url.match(regex);
   if (match && match[1]) {
-    id = match[1];
+    return match[1];
   }
-  return id;
+  
+  // If not found, try to match direct URLs like /file/d/ID/view
+  const regex2 = /\/file\/d\/([a-zA-Z0-9_-]+)/;
+  const match2 = url.match(regex2);
+  if (match2 && match2[1]) {
+    return match2[1];
+  }
+  
+  // If still not found, just return the original URL
+  console.warn("Could not extract file ID from URL:", url);
+  return "";
 }
 
 // ------------------------
@@ -344,22 +367,24 @@ function displayFullscreenItem() {
     console.warn("fullscreenContent element not found.");
     return;
   }
+  
   const file = currentGalleryItems[currentGalleryIndex];
   fullscreenContent.innerHTML = '';
   const ext = getFileExtension(file.name).toLowerCase();
   const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${ext}`);
-  const fileId = extractFileId(file.url);
+  
   if (isImage) {
     const img = document.createElement('img');
-    img.src = "https://drive.google.com/uc?export=view&id=" + fileId;
+    img.src = file.url;  // Use direct URL
     img.alt = file.name;
     fullscreenContent.appendChild(img);
   } else {
     const video = document.createElement('video');
-    video.src = "https://drive.google.com/uc?export=download&id=" + fileId;
+    video.src = file.url;  // Use direct URL
     video.controls = true;
     fullscreenContent.appendChild(video);
   }
+  
   fullscreenCaption.textContent = file.name;
 }
 
