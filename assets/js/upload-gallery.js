@@ -364,8 +364,9 @@ function handleFullscreenClick(event) {
 }
 
 function handleFullscreenBackgroundClick(event) {
-  // Close fullscreen if clicking outside the image
-  if (!fullscreenContent.contains(event.target)) {
+  // Close fullscreen only if clicking outside the image and not on any control buttons
+  const isControlButton = event.target.closest('#fullscreen-close, #fullscreen-prev, #fullscreen-next, #fullscreen-play');
+  if (!fullscreenContent.contains(event.target) && !isControlButton) {
     closeFullscreen();
   }
 }
