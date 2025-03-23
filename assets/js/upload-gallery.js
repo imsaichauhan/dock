@@ -36,7 +36,6 @@ let slideshowInterval = null;
 // ------------------------
 // Upload Functions
 // ------------------------
-
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
     console.error('Missing upload DOM elements');
@@ -100,7 +99,6 @@ function handleFileSelection(files) {
     validFilesFound = true;
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
-    // (Optional: remove preview-info if you want a cleaner look)
     const previewThumb = document.createElement('div');
     previewThumb.className = 'preview-thumbnail';
     if (isImage) {
@@ -161,7 +159,6 @@ function uploadFilesParallel() {
     showUploadMessage('Missing invite code. Please refresh and log in again.', 'error');
     return;
   }
-  // Retrieve guestName from global variable or DOM element.
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
@@ -277,12 +274,6 @@ function handleGalleryResponse(data) {
   
   if (data && data.success && data.files) {
     currentGalleryItems = data.files;
-    
-    // Log first item for debugging
-    if (data.files.length > 0) {
-      console.log("First gallery item:", data.files[0]);
-    }
-    
     displayGalleryItems();
   } else {
     console.error("Gallery API error:", data);
@@ -292,64 +283,48 @@ function handleGalleryResponse(data) {
 
 function displayGalleryItems() {
   galleryGrid.innerHTML = '';
-  const shuffled = currentGalleryItems.sort(() => 0.5 - Math.random());
-  shuffled.forEach((file, index) => {
+  currentGalleryItems.forEach((file, index) => {
     const item = document.createElement('div');
     item.className = 'gallery-item';
-    const ext = getFileExtension(file.name).toLowerCase();
-    const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${ext}`);
     
-    // Log for debugging
-    console.log("Processing file:", file.name, "URL:", file.url);
+    const mediaContainer = document.createElement('div');
+    mediaContainer.className = 'media-container';
     
-    if (isImage) {
+    if (file.mimeType.startsWith('image/')) {
       const img = document.createElement('img');
-      // Use the URL directly from the backend
       img.src = file.url;
       img.alt = file.name;
-      if (CONFIG.GALLERY.LAZY_LOAD) {
-        img.loading = 'lazy';
-      }
-      item.appendChild(img);
-    } else {
-      const video = document.createElement('video');
-      // Use the URL directly from the backend
-      video.src = file.url;
-      video.controls = true;
-      item.appendChild(video);
+      img.loading = 'lazy';
+      img.onerror = function() {
+        this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      };
+      mediaContainer.appendChild(img);
+      
+    } else if (file.mimeType.startsWith('video/')) {
+      const videoWrapper = document.createElement('div');
+      videoWrapper.className = 'video-wrapper';
+      
+      const iframe = document.createElement('iframe');
+      iframe.src = file.url;
+      iframe.frameBorder = '0';
+      iframe.allow = 'autoplay; fullscreen';
+      iframe.allowFullscreen = true;
+      
+      videoWrapper.appendChild(iframe);
+      mediaContainer.appendChild(videoWrapper);
     }
     
     if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
       const uploader = document.createElement('div');
       uploader.className = 'gallery-uploader';
       uploader.textContent = file.uploader;
-      item.appendChild(uploader);
+      mediaContainer.appendChild(uploader);
     }
     
-    item.addEventListener('click', () => openFullscreen(index));
+    mediaContainer.addEventListener('click', () => openFullscreen(index));
+    item.appendChild(mediaContainer);
     galleryGrid.appendChild(item);
   });
-}
-
-// Updated function - removed as we're using direct URLs now
-function extractFileId(url) {
-  // First try to match id parameter
-  const regex = /[?&]id=([a-zA-Z0-9_-]+)/;
-  const match = url.match(regex);
-  if (match && match[1]) {
-    return match[1];
-  }
-  
-  // If not found, try to match direct URLs like /file/d/ID/view
-  const regex2 = /\/file\/d\/([a-zA-Z0-9_-]+)/;
-  const match2 = url.match(regex2);
-  if (match2 && match2[1]) {
-    return match2[1];
-  }
-  
-  // If still not found, just return the original URL
-  console.warn("Could not extract file ID from URL:", url);
-  return "";
 }
 
 // ------------------------
@@ -362,27 +337,21 @@ function openFullscreen(index) {
 }
 
 function displayFullscreenItem() {
-  if (currentGalleryItems.length === 0) return;
-  if (!fullscreenContent) {
-    console.warn("fullscreenContent element not found.");
-    return;
-  }
-  
   const file = currentGalleryItems[currentGalleryIndex];
   fullscreenContent.innerHTML = '';
-  const ext = getFileExtension(file.name).toLowerCase();
-  const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${ext}`);
   
-  if (isImage) {
+  if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
-    img.src = file.url;  // Use direct URL
+    img.src = file.url.replace('&sz=w1000', '&sz=w1920');
     img.alt = file.name;
     fullscreenContent.appendChild(img);
-  } else {
-    const video = document.createElement('video');
-    video.src = file.url;  // Use direct URL
-    video.controls = true;
-    fullscreenContent.appendChild(video);
+    
+  } else if (file.mimeType.startsWith('video/')) {
+    const iframe = document.createElement('iframe');
+    iframe.src = file.url;
+    iframe.allowFullscreen = true;
+    iframe.frameBorder = '0';
+    fullscreenContent.appendChild(iframe);
   }
   
   fullscreenCaption.textContent = file.name;
