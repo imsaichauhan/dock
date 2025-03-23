@@ -42,33 +42,26 @@ function setupUploadFunctionality() {
     console.error('Missing upload DOM elements');
     return;
   }
-
   uploadDropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadDropzone.classList.add('dropzone-active');
   });
-
   uploadDropzone.addEventListener('dragleave', () => {
     uploadDropzone.classList.remove('dropzone-active');
   });
-
   uploadDropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadDropzone.classList.remove('dropzone-active');
     handleFileSelection(e.dataTransfer.files);
   });
-
   uploadDropzone.addEventListener('click', () => {
     fileInput.click();
   });
-
   fileInput.addEventListener('change', () => {
     handleFileSelection(fileInput.files);
   });
-
   uploadButton.addEventListener('click', uploadFilesParallel);
   clearFilesButton.addEventListener('click', clearFileSelection);
-
   if (fullscreenClose) {
     fullscreenClose.addEventListener('click', closeFullscreen);
   }
@@ -88,63 +81,42 @@ function handleFileSelection(files) {
   selectedFiles = [];
   uploadPreviewList.innerHTML = '';
   let validFilesFound = false;
-
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const fileType = getFileExtension(file.name).toLowerCase();
     const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${fileType}`);
     const isVideo = CONFIG.UPLOAD.ALLOWED_VIDEO_TYPES.includes(`.${fileType}`);
-
     if (!isImage && !isVideo) {
       showUploadMessage(`File "${file.name}" is not an allowed type.`, 'error');
       continue;
     }
-
     const maxSize = isImage ? CONFIG.UPLOAD.MAX_IMAGE_SIZE : CONFIG.UPLOAD.MAX_VIDEO_SIZE;
     const fileSizeMB = file.size / (1024 * 1024);
     if (fileSizeMB > maxSize) {
       showUploadMessage(`File "${file.name}" exceeds the maximum size of ${maxSize}MB.`, 'error');
       continue;
     }
-
     selectedFiles.push(file);
     validFilesFound = true;
-
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
-
-    const previewInfo = document.createElement('div');
-    previewInfo.className = 'preview-info';
-
-    const fileNameElem = document.createElement('span');
-    fileNameElem.className = 'preview-filename';
-    fileNameElem.textContent = file.name;
-
-    const fileSizeElem = document.createElement('span');
-    fileSizeElem.className = 'preview-filesize';
-    fileSizeElem.textContent = `${fileSizeMB.toFixed(2)}MB`;
-
-    previewInfo.appendChild(fileNameElem);
-    previewInfo.appendChild(fileSizeElem);
-    previewItem.appendChild(previewInfo);
-
+    // (Optional: remove preview-info if you want a cleaner look)
+    const previewThumb = document.createElement('div');
+    previewThumb.className = 'preview-thumbnail';
     if (isImage) {
-      const previewThumb = document.createElement('div');
-      previewThumb.className = 'preview-thumbnail';
       const img = document.createElement('img');
       img.src = URL.createObjectURL(file);
       img.onload = () => URL.revokeObjectURL(img.src);
       previewThumb.appendChild(img);
-      previewItem.appendChild(previewThumb);
     } else if (isVideo) {
       const videoIcon = document.createElement('div');
       videoIcon.className = 'preview-video-icon';
       videoIcon.innerHTML = '🎥';
-      previewItem.appendChild(videoIcon);
+      previewThumb.appendChild(videoIcon);
     }
+    previewItem.appendChild(previewThumb);
     uploadPreviewList.appendChild(previewItem);
   }
-
   if (validFilesFound) {
     uploadPreviewContainer.classList.remove('hidden');
     uploadButton.disabled = false;
@@ -189,24 +161,18 @@ function uploadFilesParallel() {
     showUploadMessage('Missing invite code. Please refresh and log in again.', 'error');
     return;
   }
-
-  // Retrieve guestName from global variable or DOM element
+  // Retrieve guestName from global variable or DOM element.
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
-
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
   uploadProgressContainer.classList.remove('hidden');
   uploadProgressBar.style.width = '0%';
   uploadProgressText.textContent = '0% Complete';
-
   let uploadedCount = 0;
-
-  // Create an array of Promises for each file upload.
   const uploadPromises = selectedFiles.map((file, index) => {
     return new Promise((resolve, reject) => {
       const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
       window[callbackName] = function(response) {
-        // Clean up script tag.
         const scriptElement = document.getElementById('upload-script-' + index);
         if (scriptElement) {
           document.body.removeChild(scriptElement);
@@ -218,25 +184,18 @@ function uploadFilesParallel() {
           reject(response.error || 'Upload failed.');
         }
       };
-
-      // Read file as base64.
       const reader = new FileReader();
       reader.onload = function(e) {
         const base64Data = e.target.result.split(',')[1];
-
-        // Build URL with necessary parameters.
         const url = new URL(CONFIG.UPLOAD_GALLERY_API_URL);
         url.searchParams.append('fileUpload', 'true');
         url.searchParams.append('inviteCode', inviteCode);
         url.searchParams.append('guestName', guestName);
         url.searchParams.append('index', index);
         url.searchParams.append('callback', callbackName);
-
-        // Create a form for submission.
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = url.toString();
-        // Each form targets its own hidden iframe.
         const iframeId = 'upload-iframe-' + index;
         let iframe = document.getElementById(iframeId);
         if (!iframe) {
@@ -248,7 +207,6 @@ function uploadFilesParallel() {
         }
         form.target = iframeId;
         form.enctype = 'application/json';
-
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'json';
@@ -259,11 +217,7 @@ function uploadFilesParallel() {
         });
         form.appendChild(input);
         document.body.appendChild(form);
-
-        // Submit the form.
         form.submit();
-
-        // Remove the form after a delay.
         setTimeout(() => {
           document.body.removeChild(form);
         }, 1000);
@@ -277,7 +231,6 @@ function uploadFilesParallel() {
       return response;
     });
   });
-
   Promise.all(uploadPromises)
     .then(results => {
       setTimeout(() => {
@@ -299,19 +252,17 @@ function uploadFilesParallel() {
 // ------------------------
 // Gallery Functions
 // ------------------------
-
 function setupGalleryFunctionality() {
   if (!gallerySection || !galleryGrid) {
     console.error('Missing gallery DOM elements');
     return;
   }
   fetchGalleryItems();
-  setInterval(fetchGalleryItems, 5 * 60 * 1000); // Refresh every 5 minutes
+  setInterval(fetchGalleryItems, 5 * 60 * 1000);
 }
 
 function fetchGalleryItems() {
   const script = document.createElement('script');
-  // Use the new API URL for gallery fetching
   script.src = `${CONFIG.UPLOAD_GALLERY_API_URL}?action=fetchGallery&callback=handleGalleryResponse`;
   document.body.appendChild(script);
 }
@@ -339,17 +290,21 @@ function displayGalleryItems() {
     const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${ext}`);
     if (isImage) {
       const img = document.createElement('img');
-      img.src = file.url;
+      // For images, use direct embed URL.
+      const fileId = extractFileId(file.url);
+      img.src = "https://drive.google.com/uc?export=view&id=" + fileId;
       img.alt = file.name;
       if (CONFIG.GALLERY.LAZY_LOAD) {
         img.loading = 'lazy';
       }
       item.appendChild(img);
     } else {
-      const videoIcon = document.createElement('div');
-      videoIcon.className = 'gallery-video-icon';
-      videoIcon.innerHTML = '🎥';
-      item.appendChild(videoIcon);
+      const video = document.createElement('video');
+      // For videos, use direct download URL.
+      const fileId = extractFileId(file.url);
+      video.src = "https://drive.google.com/uc?export=download&id=" + fileId;
+      video.controls = true;
+      item.appendChild(video);
     }
     if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
       const uploader = document.createElement('div');
@@ -362,10 +317,21 @@ function displayGalleryItems() {
   });
 }
 
+// Helper to extract file ID from URL (supports URLs of format uc?export=...)
+function extractFileId(url) {
+  // Try to match common patterns
+  let id = "";
+  const regex = /(?:id=)([a-zA-Z0-9_-]+)/;
+  const match = url.match(regex);
+  if (match && match[1]) {
+    id = match[1];
+  }
+  return id;
+}
+
 // ------------------------
 // Fullscreen Gallery Functions
 // ------------------------
-
 function openFullscreen(index) {
   currentGalleryIndex = index;
   displayFullscreenItem();
@@ -374,18 +340,23 @@ function openFullscreen(index) {
 
 function displayFullscreenItem() {
   if (currentGalleryItems.length === 0) return;
+  if (!fullscreenContent) {
+    console.warn("fullscreenContent element not found.");
+    return;
+  }
   const file = currentGalleryItems[currentGalleryIndex];
   fullscreenContent.innerHTML = '';
   const ext = getFileExtension(file.name).toLowerCase();
   const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${ext}`);
+  const fileId = extractFileId(file.url);
   if (isImage) {
     const img = document.createElement('img');
-    img.src = file.url;
+    img.src = "https://drive.google.com/uc?export=view&id=" + fileId;
     img.alt = file.name;
     fullscreenContent.appendChild(img);
   } else {
     const video = document.createElement('video');
-    video.src = file.url;
+    video.src = "https://drive.google.com/uc?export=download&id=" + fileId;
     video.controls = true;
     fullscreenContent.appendChild(video);
   }
@@ -423,13 +394,11 @@ function closeFullscreen() {
 // ------------------------
 // Initialization
 // ------------------------
-
 function setupUploadGallerySections() {
   const uploadSection = document.getElementById('upload-section');
   const uploadNavItem = document.getElementById('upload-nav-item');
   const gallerySection = document.getElementById('gallery-section');
   const galleryNavItem = document.getElementById('gallery-nav-item');
-
   if (uploadSection && uploadNavItem) {
     if (CONFIG.UPLOAD.ENABLED) {
       uploadNavItem.classList.remove('hidden');
@@ -439,7 +408,6 @@ function setupUploadGallerySections() {
       uploadNavItem.classList.add('hidden');
     }
   }
-
   if (gallerySection && galleryNavItem) {
     if (CONFIG.GALLERY.ENABLED) {
       galleryNavItem.classList.remove('hidden');
