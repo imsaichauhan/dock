@@ -15,6 +15,10 @@ const submitRsvpBtn = document.getElementById('submit-rsvp');
 const rsvpMessage = document.getElementById('rsvp-message');
 const whatsappContainer = document.getElementById('whatsapp-container');
 const whatsappLink = document.getElementById('whatsapp-link');
+// Spotify DOM Elements
+const spotifyContainer = document.getElementById('spotify-container');
+const spotifyLink = document.getElementById('spotify-link');
+// Event Details Elements
 const eventDatetime = document.getElementById('event-datetime');
 const eventVenue = document.getElementById('event-venue');
 const mapsLink = document.getElementById('maps-link');
@@ -24,25 +28,29 @@ const venueDetails = document.getElementById('venue-details');
 const venueRevealControls = document.getElementById('venue-reveal-controls');
 const balloonContainer = document.getElementById('balloon-container');
 
-// Global variable to store the RSVP selection before submitting
+// Global Variables
 let submittedRsvp = null;
+let guestName = '';
+
+// ------------------------
+// Login & RSVP Functions
+// ------------------------
 
 // Create animated balloons for the login screen
 function createBalloons() {
     const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#62CBFF', '#A782FD'];
     const sizes = [40, 50, 60, 70, 80];
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const balloonCount = isMobile ? 2 : 8;
 
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < balloonCount; i++) {
         const balloon = document.createElement('div');
         balloon.className = 'balloon';
-
-        // Random styles
         const size = sizes[Math.floor(Math.random() * sizes.length)];
         const color = colors[Math.floor(Math.random() * colors.length)];
         const left = Math.random() * 100;
         const animationDuration = 8 + Math.random() * 8;
         const animationDelay = Math.random() * 5;
-
         balloon.style.width = `${size}px`;
         balloon.style.height = `${Math.round(size * 1.6)}px`;
         balloon.style.background = color;
@@ -50,7 +58,6 @@ function createBalloons() {
         balloon.style.animationDuration = `${animationDuration}s`;
         balloon.style.animationDelay = `${animationDelay}s`;
         balloon.style.opacity = '0.7';
-
         balloonContainer.appendChild(balloon);
     }
 }
@@ -58,19 +65,16 @@ function createBalloons() {
 // Add pulse effect to the submit button
 function addLoginButtonEffects() {
     submitCodeBtn.classList.add('pulse-effect');
-
-    // Focus effect on input
     inviteCodeInput.addEventListener('focus', () => {
         inviteCodeInput.style.transition = 'all 0.3s ease';
         inviteCodeInput.style.boxShadow = '0 0 10px rgba(52, 152, 219, 0.5)';
     });
-
     inviteCodeInput.addEventListener('blur', () => {
         inviteCodeInput.style.boxShadow = '';
     });
 }
 
-// Fallback scroll function: tries window.scrollTo, then forces document scroll positions
+// Fallback scroll function
 function scrollToTopFallback() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     document.documentElement.scrollTop = 0;
@@ -79,63 +83,86 @@ function scrollToTopFallback() {
 
 // Initialize the application
 function init() {
-    // Add visual enhancements to login screen
     createBalloons();
     addLoginButtonEffects();
-
-    // Set up event details
+    // Setup event details
     eventDatetime.textContent = CONFIG.EVENT.DATE_TIME;
     eventVenue.textContent = CONFIG.EVENT.VENUE;
     mapsLink.href = CONFIG.EVENT.GOOGLE_MAPS;
-
-    // NEW: Set the venue video link if available
     const venueVideoLink = document.getElementById('venue-video-link');
     if (venueVideoLink) {
         venueVideoLink.href = CONFIG.EVENT.VENUE_VIDEO;
     }
-
     eventItems.textContent = CONFIG.EVENT.ITEMS;
-
-    // Check if venue details should be revealed from the start
     if (CONFIG.REVEAL_VENUE && venueDetails) {
         venueDetails.classList.add('revealed');
+        const overlay = venueDetails.querySelector('.blur-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
         if (venueRevealControls) {
             venueRevealControls.classList.add('hidden');
         }
     }
-
-    // Ensure tooltip is properly set up for blurred content
     setupBlurTooltip();
-
-    // Ensure WhatsApp link is properly set
     if (CONFIG.WHATSAPP_LINK) {
         whatsappLink.href = CONFIG.WHATSAPP_LINK;
         console.log('WhatsApp link initialized:', CONFIG.WHATSAPP_LINK);
     } else {
         console.error('WhatsApp link configuration missing');
     }
-
-    // Set up event listeners
+    // Set Public Drive Link for gallery
+    if (driveLink && CONFIG.GALLERY.PUBLIC_DRIVE_LINK) {
+        driveLink.href = CONFIG.GALLERY.PUBLIC_DRIVE_LINK;
+    }
     setupEventListeners();
+    setupUploadGallerySections(); // Ensure this function is called
+
+    // Hide RSVP section and show Upload/Gallery sections based on config
+    const rsvpSection = document.getElementById('rsvp');
+    if (CONFIG.UPLOAD.ENABLED || CONFIG.GALLERY.ENABLED) {
+        if (rsvpSection) {
+            rsvpSection.classList.add('hidden');
+        }
+        if (CONFIG.UPLOAD.ENABLED) {
+            const uploadSection = document.getElementById('upload-section');
+            const uploadNavItem = document.getElementById('upload-nav-item');
+            if (uploadSection) {
+                uploadSection.classList.remove('hidden');
+            }
+            if (uploadNavItem) {
+                uploadNavItem.classList.remove('hidden');
+            }
+        }
+        if (CONFIG.GALLERY.ENABLED) {
+            const gallerySection = document.getElementById('gallery-section');
+            const galleryNavItem = document.getElementById('gallery-nav-item');
+            if (gallerySection) {
+                gallerySection.classList.remove('hidden');
+            }
+            if (galleryNavItem) {
+                galleryNavItem.classList.remove('hidden');
+            }
+        }
+    }
 }
 
 // Set up event listeners
 function setupEventListeners() {
-    // Submit invite code
     submitCodeBtn.addEventListener('click', validateInviteCode);
     inviteCodeInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') validateInviteCode();
     });
-
-    // Allow revealing venue details if needed
     if (revealVenueBtn && venueDetails && !CONFIG.REVEAL_VENUE) {
         revealVenueBtn.addEventListener('click', () => {
             venueDetails.classList.add('revealed');
+            const overlay = venueDetails.querySelector('.blur-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
             venueRevealControls.classList.add('hidden');
         });
     }
-
-    // RSVP selection: Show food preference only if "Yes" is chosen
     rsvpInputs.forEach(input => {
         input.addEventListener('change', (e) => {
             if (e.target.value === 'Yes') {
@@ -146,24 +173,17 @@ function setupEventListeners() {
             }
         });
     });
-
-    // Submit RSVP
     submitRsvpBtn.addEventListener('click', submitRSVP);
-
-    // Back to top button
     const backToTopBtn = document.getElementById('back-to-top');
     if (backToTopBtn) {
         backToTopBtn.addEventListener('click', scrollToTopFallback);
     }
-
-    // Add floating effect to login card on hover
     const loginCard = document.querySelector('.login-card');
     if (loginCard) {
         loginCard.addEventListener('mouseenter', () => {
             loginCard.style.transform = 'translateY(-5px)';
             loginCard.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.2)';
         });
-
         loginCard.addEventListener('mouseleave', () => {
             loginCard.style.transform = '';
             loginCard.style.boxShadow = '';
@@ -171,95 +191,79 @@ function setupEventListeners() {
     }
 }
 
-// Set up tooltip for blurred content
+// Revised Tooltip System
 function setupBlurTooltip() {
-    // Target all elements with blur-content class
     const blurredElements = document.querySelectorAll('.blur-content');
-    
     blurredElements.forEach(element => {
-        // Ensure the element has position:relative for tooltip positioning
+        if (element.classList.contains('revealed')) return;
         element.style.position = 'relative';
-        
-        // Add event listeners for hover and click
-        element.addEventListener('mouseenter', () => showBlurTooltip(element));
-        element.addEventListener('mouseleave', () => hideBlurTooltip(element));
-        
-        // Also toggle tooltip on click (auto-hide after 3 seconds)
-        element.addEventListener('click', () => {
-            const tooltipId = `blur-tooltip-${element.id || 'default'}`;
-            const existingTooltip = document.getElementById(tooltipId);
-            
-            if (existingTooltip) {
+        if (!element.querySelector('.blur-overlay')) {
+            const overlay = document.createElement('div');
+            overlay.className = 'blur-overlay';
+            element.appendChild(overlay);
+            overlay.addEventListener('mousemove', (e) => {
+                showBlurTooltip(element, e);
+            });
+            overlay.addEventListener('mouseleave', () => {
                 hideBlurTooltip(element);
-            } else {
-                showBlurTooltip(element);
-                setTimeout(() => hideBlurTooltip(element), 3000);
-            }
-        });
+            });
+        }
     });
 }
 
-// Tooltip functions for blurred content
-function showBlurTooltip(element) {
+function showBlurTooltip(element, event) {
     const tooltipId = `blur-tooltip-${element.id || 'default'}`;
-    
-    // Avoid adding duplicate tooltip elements
-    if (document.getElementById(tooltipId)) return;
-
-    const tooltip = document.createElement('div');
-    tooltip.id = tooltipId;
-    tooltip.className = 'blur-tooltip';
-    tooltip.textContent = "Blurry for now… but those who inspect closely might see more. 😉";
-
-    // Style the tooltip
-    tooltip.style.position = 'absolute';
-    tooltip.style.bottom = '100%';
-    tooltip.style.left = '50%';
-    tooltip.style.transform = 'translateX(-50%)';
-    tooltip.style.background = 'rgba(0, 0, 0, 0.7)';
-    tooltip.style.color = '#fff';
-    tooltip.style.padding = '5px 10px';
-    tooltip.style.borderRadius = '4px';
-    tooltip.style.fontSize = '12px';
-    tooltip.style.whiteSpace = 'nowrap';
-    tooltip.style.zIndex = '100';
-    tooltip.style.pointerEvents = 'none'; // so it doesn't block mouse events
-    tooltip.style.marginBottom = '5px'; // add some space between tooltip and element
-
-    element.appendChild(tooltip);
+    let tooltip = document.getElementById(tooltipId);
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = tooltipId;
+        tooltip.className = 'blur-tooltip';
+        const tooltipText = document.createElement('span');
+        tooltipText.textContent = "Blurry for now… but those who inspect closely might see more. 😉";
+        tooltip.appendChild(tooltipText);
+        document.body.appendChild(tooltip);
+    }
+    void tooltip.offsetHeight;
+    const offset = 15;
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    let posX = event.clientX + offset;
+    let posY = event.clientY + offset;
+    if (posX + tooltipRect.width > viewportWidth - 20) {
+        posX = event.clientX - tooltipRect.width - offset;
+    }
+    if (posY + tooltipRect.height > viewportHeight - 20) {
+        posY = event.clientY - tooltipRect.height - offset;
+    }
+    tooltip.style.left = `${Math.max(20, posX)}px`;
+    tooltip.style.top = `${Math.max(20, posY)}px`;
 }
 
 function hideBlurTooltip(element) {
     const tooltipId = `blur-tooltip-${element.id || 'default'}`;
     const tooltip = document.getElementById(tooltipId);
-    if (tooltip) {
-        tooltip.remove();
-    }
+    if (tooltip) tooltip.remove();
 }
 
 // Validate invite code using JSONP
 function validateInviteCode() {
     const inviteCode = inviteCodeInput.value.trim();
-
     if (!inviteCode) {
         showLoginError('Please enter your invite code');
         shakeInput(inviteCodeInput);
         return;
     }
-
     submitCodeBtn.disabled = true;
     submitCodeBtn.textContent = 'Checking...';
     submitCodeBtn.classList.remove('pulse-effect');
-
     const script = document.createElement('script');
     script.src = `${CONFIG.API_URL}?inviteCode=${inviteCode}&callback=handleInviteCodeResponse`;
-
     const timeout = setTimeout(() => {
         showLoginError('Request timed out. Please try again.');
         resetSubmitButton();
         document.body.removeChild(script);
     }, 10000);
-
     script.onload = () => clearTimeout(timeout);
     document.body.appendChild(script);
 }
@@ -278,26 +282,48 @@ function handleInviteCodeResponse(data) {
     if (scriptTag) {
         document.body.removeChild(scriptTag);
     }
-
     if (data.error) {
         showLoginError(data.error);
         shakeInput(inviteCodeInput);
         resetSubmitButton();
         return;
     }
-
-    // Successfully validated
     submitCodeBtn.textContent = 'Welcome!';
     submitCodeBtn.style.backgroundColor = 'var(--success-color)';
-
-    // Add success animation before switching screens
     setTimeout(() => {
-        guestNameElement.textContent = data.name;
+        if (data.name && guestNameElement) {
+            guestNameElement.textContent = data.name;
+            window.guestName = data.name;
+            guestName = data.name;
+        }
+        if (data.name === 'The Pure Joy in Human Form') {
+            CONFIG.WHATSAPP_LINK = 'https://chat.whatsapp.com/HJ95aGEzGiv2gRs6JZlc0S';
+            const whatsappLink = document.getElementById('whatsapp-link');
+            if (whatsappLink) {
+                whatsappLink.href = CONFIG.WHATSAPP_LINK;
+            }
+        }
+        if (data.name !== 'The Pure Joy in Human Form') {
+            if (spotifyContainer) {
+                spotifyContainer.classList.remove('hidden');
+            }
+            if (spotifyLink) {
+                spotifyLink.href = 'https://open.spotify.com/playlist/2AX0HBpOfjCeEFc95JTD01?si=fXb2b2vkTgmoD41A7UF1mQ&pt=8530fa3cf27624537eb062b298dad69b&pi=OKdBXREbQja3m';
+            }
+        } else {
+            if (spotifyContainer) {
+                spotifyContainer.classList.add('hidden');
+            }
+        }
         loginSection.classList.remove('active');
         welcomeSection.classList.add('active');
         welcomeSection.classList.add('fade-in');
-
-        // Clean up balloon container after login
+        if (typeof updateHeroText === 'function') {
+            updateHeroText("before");
+        }
+        if (typeof initCountdown === 'function') {
+            initCountdown();
+        }
         if (balloonContainer) {
             balloonContainer.innerHTML = '';
         }
@@ -307,15 +333,12 @@ function handleInviteCodeResponse(data) {
 // Submit RSVP using JSONP
 function submitRSVP() {
     const rsvpValue = document.querySelector('input[name="rsvp"]:checked')?.value;
-    submittedRsvp = rsvpValue; // store the user's selection
-
+    submittedRsvp = rsvpValue;
     let foodValue = 'N/A';
-
     if (!rsvpValue) {
         showRsvpMessage('Please select whether you\'ll be attending', 'error');
         return;
     }
-
     if (rsvpValue === 'Yes') {
         foodValue = document.querySelector('input[name="food"]:checked')?.value;
         if (!foodValue) {
@@ -323,55 +346,39 @@ function submitRSVP() {
             return;
         }
     }
-
     submitRsvpBtn.disabled = true;
     submitRsvpBtn.textContent = 'Submitting...';
-
     const inviteCode = inviteCodeInput.value.trim();
-
     const script = document.createElement('script');
     script.src = `${CONFIG.API_URL}?inviteCode=${inviteCode}&rsvp=${rsvpValue}&foodPreference=${foodValue}&callback=handleRsvpResponse`;
-
     const timeout = setTimeout(() => {
         showRsvpMessage('Request timed out. Please try again.', 'error');
         resetRsvpButton();
         document.body.removeChild(script);
     }, 10000);
-
     script.onload = () => clearTimeout(timeout);
     document.body.appendChild(script);
 }
 
 // Handle JSONP response for RSVP submission
 function handleRsvpResponse(data) {
-    const scriptTag = document.querySelector('script[src*="callback=handleInviteResponse"]') || 
+    const scriptTag = document.querySelector('script[src*="callback=handleInviteResponse"]') ||
                       document.querySelector('script[src*="callback=handleRsvpResponse"]');
     if (scriptTag) {
         document.body.removeChild(scriptTag);
     }
-
     console.log("RSVP Response received:", data);
-
     if (data.error) {
         showRsvpMessage(data.error, 'error');
         resetRsvpButton();
         return;
     }
-
-    // Clear any previous messages
     rsvpMessage.textContent = '';
-
-    // Use the submitted RSVP value (instead of the echoed value) to decide the branch
     const isAttending = submittedRsvp && normalizeRsvpResponse(submittedRsvp);
     console.log(`RSVP normalized from submitted: "${submittedRsvp}" → ${isAttending ? "Yes" : "No"}`);
-
-    // Clean up any existing sections
     cleanupSections();
-
-    // Process the response after a brief delay
     setTimeout(() => {
         welcomeSection.classList.remove('active');
-
         if (isAttending) {
             handleAttendingResponse();
         } else {
@@ -380,34 +387,22 @@ function handleRsvpResponse(data) {
     }, 1000);
 }
 
-// Helper function to normalize RSVP responses
 function normalizeRsvpResponse(rsvp) {
     if (!rsvp) return false;
-
     const normalized = String(rsvp).trim().toLowerCase();
     return normalized === 'yes' || normalized === 'true' || normalized === '1';
 }
 
-// Handle "Yes" RSVP response
 function handleAttendingResponse() {
     console.log("Handling 'Yes' response");
-
     showRsvpMessage('Thank you for your response! Can\'t wait to celebrate together! 🎉', 'success');
-
-    // Show thank you section
     welcomeSection.classList.remove('active');
     thankyouSection.classList.add('active');
     thankyouSection.classList.add('fade-in');
-
-    // Show WhatsApp container and launch confetti if available
     if (whatsappContainer) {
         whatsappContainer.classList.remove('hidden');
         whatsappContainer.classList.add('fade-in');
-
-        // Scroll to top using the fallback
         scrollToTopFallback();
-
-        // Add delay before creating confetti for better visual effect
         setTimeout(() => {
             if (typeof createConfetti === 'function') {
                 createConfetti();
@@ -418,12 +413,9 @@ function handleAttendingResponse() {
     }
 }
 
-// Handle "No" RSVP response
 function handleDecliningResponse() {
     console.log("Handling 'No' response");
-
     showRsvpMessage('We\'ll miss you! If plans change, you can always update your response.', 'info');
-
     const declineSection = document.createElement('section');
     declineSection.id = 'decline-section';
     declineSection.className = 'section active fade-in';
@@ -436,10 +428,8 @@ function handleDecliningResponse() {
             </div>
         </div>
     `;
-
     document.body.insertBefore(declineSection, thankyouSection.nextSibling);
     thankyouSection.classList.remove('active');
-
     const backToRsvpBtn = document.getElementById('back-to-rsvp');
     if (backToRsvpBtn) {
         backToRsvpBtn.addEventListener('click', () => {
@@ -450,18 +440,14 @@ function handleDecliningResponse() {
     }
 }
 
-// Clean up sections before showing new ones
 function cleanupSections() {
     const existingDeclineSection = document.getElementById('decline-section');
     if (existingDeclineSection) {
         existingDeclineSection.remove();
     }
-
-    // Reset thank you section state
     thankyouSection.classList.remove('active');
 }
 
-// Show error message for login
 function showLoginError(message) {
     loginError.textContent = message;
     loginError.classList.add('shake');
@@ -470,13 +456,11 @@ function showLoginError(message) {
     }, 500);
 }
 
-// Show RSVP message
 function showRsvpMessage(message, type) {
     rsvpMessage.textContent = message;
     rsvpMessage.className = 'message ' + type;
 }
 
-// Reset buttons
 function resetSubmitButton() {
     submitCodeBtn.disabled = false;
     submitCodeBtn.textContent = 'Unlock Invitation';
@@ -488,6 +472,7 @@ function resetRsvpButton() {
     submitRsvpBtn.textContent = 'Submit RSVP';
 }
 
-// IMPORTANT: Ensure that effects.js is loaded before main.js
-// Initialize application on DOM load
+// ------------------------
+// Initialization
+// ------------------------
 document.addEventListener('DOMContentLoaded', init);

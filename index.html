@@ -20,6 +20,8 @@
         <ul class="nav-links">
           <li><a href="#event-details">Details</a></li>
           <li><a href="#rsvp">RSVP</a></li>
+          <li id="gallery-nav-item" class="hidden"><a href="#gallery">Gallery</a></li>
+          <li id="upload-nav-item" class="hidden"><a href="#upload-section">Upload</a></li>
         </ul>
       </nav>
     </div>
@@ -54,8 +56,8 @@
     <div class="container">
       <!-- Hero Section -->
       <div class="hero">
-        <h1>Hey <span id="guest-name"></span>, the countdown is on… but Shibani has no clue!</h1>
-        <p class="subtitle">Laughter, surprises, and a birthday girl blissfully unaware of what's ahead!</p>
+        <h1 id="hero-heading">Hey <span id="guest-name"></span>, the countdown is on… but Shibani has no clue!</h1>
+        <p id="hero-subtitle" class="subtitle">Laughter, surprises, and a birthday girl blissfully unaware of what's ahead!</p>
         <!-- Countdown Timer -->
         <div id="countdown" class="countdown">
           <div class="timer-item">
@@ -97,7 +99,6 @@
               <a id="maps-link" href="#" target="_blank" class="maps-link">View on Google Maps</a>
             </div>
           </div>
-
           <div class="detail-item">
             <div class="icon">✨</div>
             <div class="text">
@@ -106,6 +107,15 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Spotify Playlist Section -->
+      <div id="spotify-container" class="spotify-group hidden">
+        <p>Drop your favorite jams for d-day!</p>
+        <a id="spotify-link" href="#" target="_blank" class="btn spotify-btn">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/84/Spotify_icon.svg" alt="Spotify Logo" class="spotify-logo">
+          Go to Spotify Playlist
+        </a>
       </div>
 
       <!-- Photo Carousel -->
@@ -121,6 +131,55 @@
           </div>
         </div>
       </div>
+
+      <!-- Upload Section -->
+      <section id="upload-section" class="upload-section hidden">
+        <div class="container">
+          <h2>Share Your Memories</h2>
+          <p>Upload your favorite photos and videos to add to our celebration gallery!</p>
+          <div class="upload-container">
+            <div class="upload-dropzone" id="upload-dropzone">
+              <div class="upload-icon">📸</div>
+              <p>Drag & drop files here or click to browse</p>
+              <p class="upload-limits">
+                Images (JPG, PNG, WEBP, GIF) up to 10MB<br>
+                Videos (MP4, MOV, AVI) up to 300MB
+              </p>
+              <input type="file" id="file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi" class="file-input">
+            </div>
+            <div class="upload-preview-container hidden" id="upload-preview-container">
+              <div id="upload-preview-list" class="upload-preview-list"></div>
+            </div>
+            <div class="upload-progress-container hidden" id="upload-progress-container">
+              <div class="upload-progress-bar-wrapper">
+                <div id="upload-progress-bar" class="upload-progress-bar"></div>
+              </div>
+              <p id="upload-progress-text">0% Complete</p>
+            </div>
+            <div class="upload-actions">
+              <button id="upload-button" class="btn upload-btn" disabled>Upload Files</button>
+              <button id="clear-files-button" class="btn clear-btn hidden">Clear Selection</button>
+            </div>
+            <div id="upload-message" class="upload-message"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Gallery Section -->
+      <section id="gallery-section" class="gallery-section hidden">
+        <div class="container">
+          <h2>Gallery</h2>
+          <p>Check out our growing collection of memories!</p>
+          <div class="gallery-controls">
+            <a id="drive-link" href="#" target="_blank" class="btn drive-btn">
+              View All in Drive
+            </a>
+          </div>
+          <div id="gallery-grid" class="gallery-grid">
+            <div class="gallery-loading">Loading gallery...</div>
+          </div>
+        </div>
+      </section>
 
       <!-- RSVP Section -->
       <div id="rsvp" class="rsvp-section">
@@ -155,8 +214,8 @@
       </div>
     </div>
   </section>
-  
-  <!-- Thank You Section - After RSVP Submission -->
+
+  <!-- Thank You Section -->
   <section id="thankyou-section" class="section">
     <div class="container">
       <div class="thankyou-card">
@@ -186,11 +245,12 @@
 
   <!-- Config script must come first -->
   <script src="assets/js/config.js"></script>
-  
   <!-- Load effects.js before main.js so that global functions are available -->
   <script src="assets/js/effects.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="assets/js/countdown.js"></script>
   <script src="assets/js/carousel.js"></script>
+  <!-- NEW: Upload & Gallery Script -->
+  <script src="assets/js/upload-gallery.js"></script>
 </body>
 </html>

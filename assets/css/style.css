@@ -345,12 +345,19 @@ nav {
 }
 
 /* Countdown Timer */
+/* Updated to handle both timer display and post-event messages */
 .countdown {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
     gap: 20px;
     margin: 40px 0;
+    /* When showing a message (after event starts), ensure centering */
+    text-align: center;
+    align-items: center;
+    min-height: 80px;
+    font-size: 2em;
+    color: var(--primary-color);
 }
 
 .timer-item {
@@ -409,8 +416,8 @@ nav {
 .blur-content {
     filter: blur(5px);
     transition: filter 1s ease;
-    pointer-events: auto;
     user-select: none;
+    position: relative;
 }
 
 .blur-content.revealed {
@@ -419,35 +426,64 @@ nav {
     user-select: text;
 }
 
-.venue-details {
-    position: relative;
+.blur-content a {
+    pointer-events: none;
 }
 
-.reveal-message {
+.blur-content.revealed a {
+    pointer-events: auto;
+}
+
+/* Added overlay handling */
+.blur-content.revealed .blur-overlay {
+    display: none;
+    pointer-events: none;
+}
+
+.blur-overlay {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 15px;
-    border-radius: var(--border-radius);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    background-color: transparent;
+    z-index: 100;
+}
+
+.blur-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: var(--font-primary);
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.3s ease forwards;
+    max-width: 300px;
     text-align: center;
-    font-weight: 600;
-    color: var(--primary-color);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    z-index: 10;
+    line-height: 1.5;
+    white-space: normal;
+    width: max-content;
 }
 
-.reveal-btn {
-    margin: 20px 0;
+.blur-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -8px;
+    border-width: 8px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
 }
 
-.surprise-details {
-    background-color: #fff9e6;
-    border-left: 4px solid #f39c12;
-    padding: 15px;
-    border-radius: 5px;
-    margin-top: 20px;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Photo Section */
@@ -459,7 +495,7 @@ nav {
 .carousel-container {
     position: relative;
     width: 100%;
-    max-width: 500px; /* Limit width on desktop */
+    max-width: 500px;
     margin: 0 auto;
     height: auto;
     overflow: hidden;
@@ -480,8 +516,8 @@ nav {
 
 .carousel-image {
     width: 100%;
-    aspect-ratio: 1/1; /* This ensures 1:1 aspect ratio */
-    object-fit: cover; /* Changed to cover for better image filling */
+    aspect-ratio: 1/1;
+    object-fit: cover;
     display: block;
 }
 
@@ -696,16 +732,14 @@ nav {
         font-size: 1.5rem;
     }
     
-    /* Make carousel full width on mobile */
     .carousel-container {
         max-width: 100%;
     }
     
-    /* Mobile Navigation */
     .nav-links {
         flex-direction: column;
         text-align: center;
-        display: none; /* Hidden by default on mobile */
+        display: none;
     }
     
     .nav-links.active {
@@ -731,38 +765,62 @@ nav {
     }
 }
 
-@media (max-width: 480px) {
-    .login-card, .thankyou-card {
-        padding: 25px 15px;
-        margin: 60px auto 40px;
-    }
-    
-    .timer-item {
-        min-width: 60px;
-        padding: 10px;
-    }
+@media (max-width: 768px) {
+  .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5%;
+  }
+}
 
-    .login-card h1 {
-        font-size: 1.6rem;
-    }
+/* Spotify Playlist Section Styles */
+.spotify-group {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    margin-bottom: 40px;
+    text-align: center;
+}
 
-    .login-card p {
-        font-size: 1rem;
-    }
+.spotify-group h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
 
-    .input-group input, 
-    .input-group button {
-        padding: 12px 15px;
-    }
+.spotify-group p {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+}
 
-    .did-you-know {
-        padding: 10px;
-        margin-bottom: 20px;
-    }
+.spotify-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: #1DB954;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease, box-shadow 0.2s;
+    text-decoration: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
 
-    .facts-container {
-        font-size: 0.9rem;
-    }
+.spotify-btn:hover {
+    background-color: #1ed760;
+    transform: translateY(-2px);
+}
+
+.spotify-logo {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 /* Balloon Container Styles */
@@ -788,7 +846,6 @@ nav {
     animation: balloonRise 12s linear infinite;
 }
 
-/* Add missing fadeIn animation if used in the document */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -798,7 +855,6 @@ nav {
     }
 }
 
-/* Add missing balloonRise animation if used */
 @keyframes balloonRise {
     0% {
         transform: translateY(0) translateX(0);
@@ -816,20 +872,165 @@ nav {
     }
 }
 
-/* Tooltip styles for blurred content */
-.blur-tooltip {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    z-index: 100;
-    pointer-events: none;
-    margin-bottom: 5px;
-    animation: fadeIn 0.3s ease forwards;
+@media (max-width: 768px) {
+    /* Increase padding for container */
+    .container {
+        padding: 8%;
+    }
+
+    /* Adjust subtitle font size and line spacing */
+    .subtitle {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    /* Adjust countdown spacing */
+    .countdown {
+        margin-top: 20px;
+    }
 }
+
+@media (max-width: 768px) {
+  .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5%;
+  }
+}
+
+/* Limit the preview list container */
+.upload-preview-list {
+    max-height: 300px; /* Adjust height as needed */
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+  }
+  
+  /* Style each preview item */
+  .upload-preview-item {
+    flex: 0 0 auto;
+    width: 100px;  /* Thumbnail width */
+    text-align: center;
+  }
+  
+  /* Ensure preview images don't overflow the item */
+  .upload-preview-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+/* Hide the preview info (file names and sizes) */
+.upload-preview-item .preview-info {
+    display: none;
+  }
+  
+  /* Optionally, style the preview items to have a fixed size */
+  .upload-preview-item {
+    width: 100px; /* Set a fixed width for each thumbnail */
+    margin: 5px;
+  }
+  
+  /* Make sure preview images fit within their container */
+  .upload-preview-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+    
+/* Upload Section Styles */
+.upload-section {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 40px 20px;
+    margin-bottom: 40px;
+}
+
+.upload-section .upload-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--primary-color);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    text-align: center;
+    color: #888;
+    transition: background-color var(--transition-speed) ease;
+    margin-bottom: 20px;
+}
+
+.upload-dropzone:hover {
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+/* Remove file name/size info from preview */
+.upload-preview-list .preview-info {
+    display: none;
+}
+
+/* Gallery Section Styles */
+.gallery-section {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 40px 20px;
+    margin-bottom: 40px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    padding: 20px 0;
+}
+
+.gallery-item {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-5px);
+}
+
+.gallery-item img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+/* Gallery Controls */
+.gallery-controls {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Preview List Container: scrollable if many files */
+.upload-preview-list {
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+}
+.upload-preview-item {
+    width: 100px;
+    margin: 5px;
+}
+.upload-preview-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Existing styles continue below... */
+/* (Rest of your CSS remains unchanged) */
