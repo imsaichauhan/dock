@@ -1034,3 +1034,188 @@ nav {
 
 /* Existing styles continue below... */
 /* (Rest of your CSS remains unchanged) */
+
+/* Gallery Grid Layout */
+.gallery-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gallery-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.media-container {
+  position: relative;
+  padding-top: 100%;
+  overflow: hidden;
+}
+
+.media-container img,
+.media-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Responsive Columns */
+@media (max-width: 600px) {
+  .gallery-grid {
+    grid-template-columns: repeat(1, 1fr));
+  }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr));
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .gallery-grid {
+    grid-template-columns: repeat(3, 1fr));
+  }
+}
+
+@media (min-width: 1201px) and (max-width: 1600px) {
+  .gallery-grid {
+    grid-template-columns: repeat(4, 1fr));
+  }
+}
+
+@media (min-width: 1601px) {
+  .gallery-grid {
+    grid-template-columns: repeat(5, 1fr));
+  }
+}
+
+/* Fullscreen Gallery */
+#gallery-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#fullscreen-content {
+  max-width: 90%;
+  max-height: 90%;
+  position: relative;
+}
+
+#fullscreen-content img,
+#fullscreen-content iframe {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+}
+
+#fullscreen-caption {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#fullscreen-close,
+#fullscreen-prev,
+#fullscreen-next,
+#fullscreen-play {
+  position: absolute;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  padding: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+#fullscreen-close {
+  top: 20px;
+  right: 20px;
+}
+
+#fullscreen-prev {
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+#fullscreen-next {
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+#fullscreen-play {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Loading Indicators */
+.gallery-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 18px;
+  color: #666;
+}
+
+.gallery-loading::after {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ccc;
+  border-top-color: #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Uploader Information */
+.gallery-uploader {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
