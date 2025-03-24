@@ -38,7 +38,7 @@ let sortedGalleryFiles = [];  // Visual order for fullscreen
 let sentinel = null;          // Moved to global scope for access across functions
 
 // ------------------------
-// Upload Functions (Improved with XHR)
+// Upload Functions (improved)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -102,7 +102,7 @@ function handleFileSelection(files) {
     selectedFiles.push(file);
     validFilesFound = true;
     
-    // Create preview item with per-file progress overlay
+    // Create preview item with progress indicator overlay
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
     previewItem.dataset.index = i;
@@ -123,11 +123,10 @@ function handleFileSelection(files) {
       previewThumb.appendChild(videoIcon);
     }
     
-    // Add overlay for progress/status text
+    // Add per-file progress overlay
     const fileProgress = document.createElement('div');
     fileProgress.className = 'upload-file-progress';
     fileProgress.textContent = 'Waiting...';
-    
     previewItem.appendChild(previewThumb);
     previewItem.appendChild(fileProgress);
     uploadPreviewList.appendChild(previewItem);
@@ -177,7 +176,7 @@ function uploadFilesParallel() {
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
   
-  // Add a visual effect to indicate upload has started
+  // Add a visual effect to the dropzone when uploading begins
   uploadDropzone.classList.add('uploading');
   
   uploadProgressContainer.classList.remove('hidden');
@@ -187,97 +186,95 @@ function uploadFilesParallel() {
   let uploadedCount = 0;
   const uploadPromises = selectedFiles.map((file, index) => {
     return new Promise((resolve, reject) => {
-      // Create FormData for the file upload
-      const formData = new FormData();
-      formData.append('inviteCode', inviteCode);
-      formData.append('guestName', guestName);
-      formData.append('file', file);
-      
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', CONFIG.UPLOAD_GALLERY_API_URL);
-      
-      // Update per-file progress using xhr.upload.onprogress
-      xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
-          if (previewItem) {
-            const fileProgress = previewItem.querySelector('.upload-file-progress');
-            if (fileProgress) {
-              fileProgress.textContent = percentComplete + '%';
-            }
-          }
+      const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
+      window[callbackName] = function(response) {
+        const scriptElement = document.getElementById('upload-script-' + index);
+        if (scriptElement) {
+          document.body.removeChild(scriptElement);
         }
-      };
-      
-      xhr.onload = function() {
-        if (xhr.status === 200) {
-          let response;
-          try {
-            response = JSON.parse(xhr.responseText);
-          } catch (err) {
-            response = {};
-          }
-          if (response.success) {
-            uploadedCount++;
-            const overallProgress = Math.round((uploadedCount / selectedFiles.length) * 100);
-            uploadProgressBar.style.width = overallProgress + '%';
-            uploadProgressText.textContent = overallProgress + '% Complete';
-            const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
-            if (previewItem) {
-              const fileProgress = previewItem.querySelector('.upload-file-progress');
-              if (fileProgress) {
-                fileProgress.textContent = 'Uploaded';
-                fileProgress.classList.add('upload-success');
-              }
-            }
-            resolve(response);
-          } else {
-            const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
-            if (previewItem) {
-              const fileProgress = previewItem.querySelector('.upload-file-progress');
-              if (fileProgress) {
-                fileProgress.textContent = 'Failed';
-                fileProgress.classList.add('upload-failed');
-              }
-            }
-            reject(response.error || 'Upload failed.');
-          }
+        delete window[callbackName];
+        if (response.success) {
+          resolve(response);
         } else {
-          const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
-          if (previewItem) {
-            const fileProgress = previewItem.querySelector('.upload-file-progress');
-            if (fileProgress) {
-              fileProgress.textContent = 'Failed';
-              fileProgress.classList.add('upload-failed');
-            }
-          }
-          reject('Upload failed with status ' + xhr.status);
+          reject(response.error || 'Upload failed.');
         }
       };
-      
-      xhr.onerror = function() {
-        const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
-        if (previewItem) {
-          const fileProgress = previewItem.querySelector('.upload-file-progress');
-          if (fileProgress) {
-            fileProgress.textContent = 'Failed';
-            fileProgress.classList.add('upload-failed');
-          }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Data = e.target.result.split(',')[1];
+        const url = new URL(CONFIG.UPLOAD_GALLERY_API_URL);
+        url.searchParams.append('fileUpload', 'true');
+        url.searchParams.append('inviteCode', inviteCode);
+        url.searchParams.append('guestName', guestName);
+        url.searchParams.append('index', index);
+        url.searchParams.append('callback', callbackName);
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url.toString();
+        const iframeId = 'upload-iframe-' + index;
+        let iframe = document.getElementById(iframeId);
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = iframeId;
+          iframe.name = iframeId;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
         }
-        reject('Upload failed due to a network error.');
+        form.target = iframeId;
+        form.enctype = 'application/json';
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'json';
+        input.value = JSON.stringify({
+          fileData: base64Data,
+          fileName: file.name,
+          mimeType: file.type
+        });
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        setTimeout(() => {
+          document.body.removeChild(form);
+        }, 1000);
       };
+      reader.readAsDataURL(file);
+    }).then(response => {
+      uploadedCount++;
+      // Update overall progress
+      const progress = Math.round((uploadedCount / selectedFiles.length) * 100);
+      uploadProgressBar.style.width = progress + '%';
+      uploadProgressText.textContent = progress + '% Complete';
       
-      xhr.send(formData);
+      // Update individual file progress indicator
+      const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
+      if (previewItem) {
+        const fileProgress = previewItem.querySelector('.upload-file-progress');
+        if (fileProgress) {
+          fileProgress.textContent = 'Uploaded';
+          fileProgress.classList.add('upload-success');
+        }
+      }
+      return response;
+    }).catch(error => {
+      // Mark the file as failed in its preview
+      const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
+      if (previewItem) {
+        const fileProgress = previewItem.querySelector('.upload-file-progress');
+        if (fileProgress) {
+          fileProgress.textContent = 'Failed';
+          fileProgress.classList.add('upload-failed');
+        }
+      }
+      throw error;
     });
   });
-  
   Promise.all(uploadPromises)
     .then(results => {
       setTimeout(() => {
         uploadButton.disabled = false;
         clearFilesButton.disabled = false;
         uploadProgressContainer.classList.add('hidden');
+        // Remove uploading visual effect
         uploadDropzone.classList.remove('uploading');
         showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
         clearFileSelection();
@@ -293,7 +290,7 @@ function uploadFilesParallel() {
 }
 
 // ------------------------
-// Gallery Functions
+// Gallery Functions (unchanged)
 // ------------------------
 function setupGalleryFunctionality() {
   if (!gallerySection || !galleryGrid) {
@@ -308,6 +305,7 @@ function setupGalleryFunctionality() {
   }
   
   // Clear the gallery grid before creating a new sentinel
+  // This prevents duplicate "Loading gallery..." messages
   galleryGrid.innerHTML = '';
   
   // Create a sentinel element for infinite scrolling
@@ -317,7 +315,7 @@ function setupGalleryFunctionality() {
   sentinel.innerHTML = '<div class="loading-indicator">Loading gallery...</div>';
   
   // Add it at the end of the gallery, not in the grid flow
-  sentinel.style.gridColumn = '1 / -1';
+  sentinel.style.gridColumn = '1 / -1'; // Make it span all columns
   sentinel.style.display = 'flex';
   sentinel.style.justifyContent = 'center';
   sentinel.style.padding = '20px';
@@ -347,10 +345,12 @@ function handleGalleryResponse(data) {
   console.log("Gallery API response:", data);
 
   if (data && data.success && data.files && data.files.length > 0) {
+    // On first load, shuffle and set currentGalleryItems.
     if (displayedItems === 0) {
       currentGalleryItems = shuffleArray(data.files);
       displayGalleryItems();
     } else {
+      // Append new items that haven't been displayed.
       const newItems = shuffleArray(data.files);
       const displayedOnes = currentGalleryItems.slice(0, displayedItems);
       currentGalleryItems = displayedOnes.concat(
@@ -368,12 +368,14 @@ function handleGalleryResponse(data) {
 }
 
 function displayGalleryItems() {
+  // Render the next batch of items (20 at a time)
   const itemsToShow = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
   itemsToShow.forEach((file) => {
     addGalleryItem(file);
   });
   displayedItems += itemsToShow.length;
   
+  // Move sentinel to end of gallery after adding new items
   if (sentinel) {
     galleryGrid.appendChild(sentinel);
   }
@@ -382,6 +384,7 @@ function displayGalleryItems() {
 function addGalleryItem(file) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
+  // Store file data on the item.
   item.fileData = file;
 
   const mediaContainer = document.createElement('div');
@@ -391,6 +394,7 @@ function addGalleryItem(file) {
     const img = document.createElement('img');
     img.src = file.url;
     img.alt = file.name;
+    // Use native lazy loading.
     img.loading = 'lazy';
     img.onerror = function() {
       this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,...';
@@ -415,7 +419,9 @@ function addGalleryItem(file) {
     mediaContainer.appendChild(uploader);
   }
 
+  // Add a click listener for fullscreen navigation.
   mediaContainer.addEventListener('click', () => {
+    // Rebuild the visual order array using DOM order.
     rebuildSortedGalleryFiles();
     const index = sortedGalleryFiles.findIndex(f => f.url === file.url);
     openFullscreen(index);
@@ -425,8 +431,11 @@ function addGalleryItem(file) {
   galleryGrid.appendChild(item);
 }
 
+// Function to rebuild sorted gallery files from the current DOM
 function rebuildSortedGalleryFiles() {
   const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
+  
+  // Use the actual visual order - first by rows then by columns
   sortedGalleryFiles = items.map(item => item.fileData);
 }
 
@@ -437,6 +446,7 @@ function setupInfiniteScroll() {
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
+        // Load more items when the sentinel is in view
         if (displayedItems < currentGalleryItems.length) {
           displayGalleryItems();
         }
@@ -451,6 +461,7 @@ function setupInfiniteScroll() {
   }
 }
 
+// Fisher-Yates shuffle algorithm
 function shuffleArray(array) {
   let shuffled = array.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -461,7 +472,7 @@ function shuffleArray(array) {
 }
 
 // ------------------------
-// Fullscreen Gallery Functions
+// Fullscreen Gallery Functions (unchanged)
 // ------------------------
 function openFullscreen(position) {
   currentGalleryIndex = position;
