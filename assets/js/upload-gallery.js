@@ -37,6 +37,8 @@ let displayedItems = 0;       // How many items have been rendered so far
 const itemsPerLoad = 20;      // Changed from 12 to 20 items per load
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
+// Map to track displayed items to indices in fullscreen mode
+let galleryItemIndices = [];
 
 // ------------------------
 // Upload Functions
@@ -283,7 +285,7 @@ function handleGalleryResponse(data) {
 
   console.log("Gallery API response:", data);
 
-  if (data && data.success && data.files) {
+  if (data && data.success && data.files && data.files.length > 0) {
     // Only reshuffle and reset if this is the first load or gallery is empty
     if (displayedItems === 0) {
       allGalleryItems = shuffleArray(data.files);
@@ -305,7 +307,7 @@ function handleGalleryResponse(data) {
       updateViewMoreButton();
     }
   } else {
-    console.error("Gallery API error:", data);
+    console.error("Gallery API error or empty files array:", data);
     if (displayedItems === 0) {
       galleryGrid.innerHTML = '<div class="gallery-error">Failed to load gallery.</div>';
     }
@@ -316,11 +318,15 @@ function displayGalleryItems() {
   // Display initial batch of items (first 20)
   const itemsToShow = currentGalleryItems.slice(0, itemsPerLoad);
   galleryGrid.innerHTML = '';
+  galleryItemIndices = []; // Reset the indices mapping
+  
   itemsToShow.forEach((file, index) => {
     addGalleryItem(file, index);
   });
 
   displayedItems = itemsToShow.length;
+  
+  // Explicitly show the "View More" button if there are more items to display
   updateViewMoreButton();
 }
 
@@ -329,19 +335,23 @@ function loadMoreGalleryItems() {
   const newItems = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
   
   // Append these items to the existing gallery
-  newItems.forEach((file, index) => {
-    // The actual index in the full array is displayedItems + index
-    addGalleryItem(file, displayedItems + index);
+  newItems.forEach((file, arrayIndex) => {
+    // The actual index in the full array is displayedItems + arrayIndex
+    const actualIndex = displayedItems + arrayIndex;
+    addGalleryItem(file, actualIndex);
   });
   
   // Update the displayed count
   displayedItems += newItems.length;
+  
+  // Update the view more button visibility
   updateViewMoreButton();
 }
 
 function addGalleryItem(file, index) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
+  item.dataset.index = index; // Store the index as a data attribute
 
   const mediaContainer = document.createElement('div');
   mediaContainer.className = 'media-container';
@@ -376,15 +386,25 @@ function addGalleryItem(file, index) {
     mediaContainer.appendChild(uploader);
   }
 
-  // Use the actual index from currentGalleryItems
-  mediaContainer.addEventListener('click', () => openFullscreen(index));
+  // Store index in the galleryItemIndices array for fullscreen navigation
+  galleryItemIndices.push(index);
+  
+  // Use the index position in the galleryItemIndices array for fullscreen navigation
+  const galleryPosition = galleryItemIndices.length - 1;
+  mediaContainer.addEventListener('click', () => openFullscreen(galleryPosition));
+  
   item.appendChild(mediaContainer);
   galleryGrid.appendChild(item);
 }
 
 function updateViewMoreButton() {
   if (viewMoreButton) {
-    viewMoreButton.style.display = (displayedItems >= currentGalleryItems.length) ? 'none' : 'block';
+    // Only show the button if there are more items to display
+    if (currentGalleryItems.length > displayedItems) {
+      viewMoreButton.style.display = 'block';
+    } else {
+      viewMoreButton.style.display = 'none';
+    }
   }
 }
 
@@ -401,8 +421,9 @@ function shuffleArray(array) {
 // ------------------------
 // Fullscreen Gallery Functions
 // ------------------------
-function openFullscreen(index) {
-  currentGalleryIndex = index;
+function openFullscreen(position) {
+  // Convert from display position to actual index in currentGalleryItems
+  currentGalleryIndex = position;
   displayFullscreenItem();
   galleryFullscreen.classList.remove('hidden');
 
@@ -443,12 +464,17 @@ function handleFullscreenBackgroundClick(event) {
 }
 
 function displayFullscreenItem() {
-  // Ensure currentGalleryIndex is within bounds
-  if (currentGalleryIndex < 0 || currentGalleryIndex >= currentGalleryItems.length) {
+  // Ensure currentGalleryIndex is within bounds of displayed items
+  if (currentGalleryIndex < 0) {
+    currentGalleryIndex = galleryItemIndices.length - 1;
+  } else if (currentGalleryIndex >= galleryItemIndices.length) {
     currentGalleryIndex = 0;
   }
   
-  const file = currentGalleryItems[currentGalleryIndex];
+  // Get the actual index in currentGalleryItems from our mapping
+  const actualIndex = galleryItemIndices[currentGalleryIndex];
+  const file = currentGalleryItems[actualIndex];
+  
   fullscreenContent.innerHTML = '';
 
   if (file.mimeType.startsWith('image/')) {
@@ -469,10 +495,18 @@ function displayFullscreenItem() {
 }
 
 function navigateGallery(direction) {
-  if (currentGalleryItems.length === 0) return;
+  if (galleryItemIndices.length === 0) return;
   
-  // Ensure we move consecutively through the gallery
-  currentGalleryIndex = (currentGalleryIndex + direction + currentGalleryItems.length) % currentGalleryItems.length;
+  // Move through displayed items consecutively
+  currentGalleryIndex += direction;
+  
+  // Wrap around in a cycle
+  if (currentGalleryIndex < 0) {
+    currentGalleryIndex = galleryItemIndices.length - 1;
+  } else if (currentGalleryIndex >= galleryItemIndices.length) {
+    currentGalleryIndex = 0;
+  }
+  
   displayFullscreenItem();
 }
 
