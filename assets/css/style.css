@@ -345,12 +345,14 @@ nav {
 }
 
 /* Countdown Timer */
+/* Updated to handle both timer display and post-event messages */
 .countdown {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
     gap: 20px;
     margin: 40px 0;
+    /* When showing a message (after event starts), ensure centering */
     text-align: center;
     align-items: center;
     min-height: 80px;
@@ -432,6 +434,7 @@ nav {
     pointer-events: auto;
 }
 
+/* Added overlay handling */
 .blur-content.revealed .blur-overlay {
     display: none;
     pointer-events: none;
@@ -488,7 +491,7 @@ nav {
     margin-bottom: 40px;
 }
 
-/* Carousel Styles */
+/* Updated Carousel Styles */
 .carousel-container {
     position: relative;
     width: 100%;
@@ -870,47 +873,234 @@ nav {
 }
 
 @media (max-width: 768px) {
+    /* Increase padding for container */
     .container {
         padding: 8%;
     }
 
+    /* Adjust subtitle font size and line spacing */
     .subtitle {
         font-size: 1.1rem;
         line-height: 1.6;
     }
 
+    /* Adjust countdown spacing */
     .countdown {
         margin-top: 20px;
     }
 }
 
+@media (max-width: 768px) {
+  .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5%;
+  }
+}
+
+/* Limit the preview list container */
+.upload-preview-list {
+    max-height: 300px; /* Adjust height as needed */
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+  }
+  
+  /* Style each preview item */
+  .upload-preview-item {
+    flex: 0 0 auto;
+    width: 100px;  /* Thumbnail width */
+    text-align: center;
+  }
+  
+  /* Ensure preview images don't overflow the item */
+  .upload-preview-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+/* Hide the preview info (file names and sizes) */
+.upload-preview-item .preview-info {
+    display: none;
+  }
+  
+  /* Optionally, style the preview items to have a fixed size */
+  .upload-preview-item {
+    width: 100px; /* Set a fixed width for each thumbnail */
+    margin: 5px;
+  }
+  
+  /* Make sure preview images fit within their container */
+  .upload-preview-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+    
+/* Upload Section Styles */
+.upload-section {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 40px 20px;
+    margin-bottom: 40px;
+}
+
+.upload-section .upload-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--primary-color);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    text-align: center;
+    color: #888;
+    transition: background-color var(--transition-speed) ease;
+    margin-bottom: 20px;
+}
+
+.upload-dropzone:hover {
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+/* Remove file name/size info from preview */
+.upload-preview-list .preview-info {
+    display: none;
+}
+
+/* Gallery Section Styles */
+.gallery-section {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 40px 20px;
+    margin-bottom: 40px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    padding: 20px 0;
+}
+
+.gallery-item {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-5px);
+}
+
+.gallery-item img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+/* Gallery Controls */
+.gallery-controls {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Preview List Container: scrollable if many files */
+.upload-preview-list {
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+}
+.upload-preview-item {
+    width: 100px;
+    margin: 5px;
+}
+.upload-preview-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Existing styles continue below... */
+/* (Rest of your CSS remains unchanged) */
+
+/* Gallery Grid Layout */
+.gallery-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gallery-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.media-container {
+  position: relative;
+  padding-top: 100%;
+  overflow: hidden;
+}
+
+.media-container img,
+.media-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Responsive Columns */
 @media (max-width: 600px) {
   .gallery-grid {
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: repeat(1, 1fr));
   }
 }
 
 @media (min-width: 601px) and (max-width: 900px) {
   .gallery-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr));
   }
 }
 
 @media (min-width: 901px) and (max-width: 1200px) {
   .gallery-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, 1fr));
   }
 }
 
 @media (min-width: 1201px) and (max-width: 1600px) {
   .gallery-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, 1fr));
   }
 }
 
 @media (min-width: 1601px) {
   .gallery-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, 1fr));
   }
 }
 
