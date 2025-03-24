@@ -24,12 +24,17 @@ const fullscreenNext = document.getElementById('fullscreen-next');
 const fullscreenPlay = document.getElementById('fullscreen-play');
 const galleryNavItem = document.getElementById('gallery-nav-item');
 const uploadNavItem = document.getElementById('upload-nav-item');
+// "View More" button for gallery pagination
+const viewMoreButton = document.getElementById('view-more');
 
 // ------------------------
 // Global Variables
 // ------------------------
 let selectedFiles = [];
-let currentGalleryItems = [];
+let currentGalleryItems = []; // Full list in randomized order
+let allGalleryItems = [];     // Internal copy (shuffled) of fetched files
+let displayedItems = 0;       // How many items have been rendered so far
+const itemsPerLoad = 12;      // Number of items to load per batch
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
 
@@ -254,8 +259,14 @@ function setupGalleryFunctionality() {
     console.error('Missing gallery DOM elements');
     return;
   }
+  // Reset displayed count for fresh load
+  displayedItems = 0;
   fetchGalleryItems();
+  // Refresh gallery every 5 minutes
   setInterval(fetchGalleryItems, 5 * 60 * 1000);
+  if (viewMoreButton) {
+    viewMoreButton.addEventListener('click', displayGalleryItems);
+  }
 }
 
 function fetchGalleryItems() {
@@ -269,11 +280,15 @@ function handleGalleryResponse(data) {
   if (scriptTag) {
     document.body.removeChild(scriptTag);
   }
-  
+
   console.log("Gallery API response:", data);
-  
+
   if (data && data.success && data.files) {
-    currentGalleryItems = data.files;
+    // On first load, shuffle the array for randomized order.
+    if (displayedItems === 0) {
+      allGalleryItems = shuffleArray(data.files);
+      currentGalleryItems = allGalleryItems;
+    }
     displayGalleryItems();
   } else {
     console.error("Gallery API error:", data);
@@ -282,14 +297,16 @@ function handleGalleryResponse(data) {
 }
 
 function displayGalleryItems() {
+  // Determine new batch of items to show
+  const itemsToShow = currentGalleryItems.slice(0, displayedItems + itemsPerLoad);
   galleryGrid.innerHTML = '';
-  currentGalleryItems.forEach((file, index) => {
+  itemsToShow.forEach((file, index) => {
     const item = document.createElement('div');
     item.className = 'gallery-item';
-    
+
     const mediaContainer = document.createElement('div');
     mediaContainer.className = 'media-container';
-    
+
     if (file.mimeType.startsWith('image/')) {
       const img = document.createElement('img');
       img.src = file.url;
@@ -299,32 +316,49 @@ function displayGalleryItems() {
         this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
       };
       mediaContainer.appendChild(img);
-      
     } else if (file.mimeType.startsWith('video/')) {
       const videoWrapper = document.createElement('div');
       videoWrapper.className = 'video-wrapper';
-      
+
       const iframe = document.createElement('iframe');
       iframe.src = file.url;
       iframe.frameBorder = '0';
       iframe.allow = 'autoplay; fullscreen';
       iframe.allowFullscreen = true;
-      
+
       videoWrapper.appendChild(iframe);
       mediaContainer.appendChild(videoWrapper);
     }
-    
+
     if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
       const uploader = document.createElement('div');
       uploader.className = 'gallery-uploader';
       uploader.textContent = file.uploader;
       mediaContainer.appendChild(uploader);
     }
-    
+
+    // Use the index from the sliced array; this maps correctly into currentGalleryItems.
     mediaContainer.addEventListener('click', () => openFullscreen(index));
     item.appendChild(mediaContainer);
     galleryGrid.appendChild(item);
   });
+
+  displayedItems = itemsToShow.length;
+
+  // Hide "View More" button if all items are displayed
+  if (viewMoreButton) {
+    viewMoreButton.style.display = (displayedItems >= currentGalleryItems.length) ? 'none' : 'block';
+  }
+}
+
+// Fisher-Yates shuffle algorithm
+function shuffleArray(array) {
+  let shuffled = array.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 // ------------------------
@@ -334,7 +368,7 @@ function openFullscreen(index) {
   currentGalleryIndex = index;
   displayFullscreenItem();
   galleryFullscreen.classList.remove('hidden');
-  
+
   // Add event listeners for fullscreen interactions
   fullscreenContent.addEventListener('click', handleFullscreenClick);
   galleryFullscreen.addEventListener('click', handleFullscreenBackgroundClick);
@@ -347,7 +381,7 @@ function closeFullscreen() {
     slideshowInterval = null;
     fullscreenPlay.textContent = '▶';
   }
-  
+
   // Remove event listeners when closing fullscreen
   fullscreenContent.removeEventListener('click', handleFullscreenClick);
   galleryFullscreen.removeEventListener('click', handleFullscreenBackgroundClick);
@@ -356,7 +390,7 @@ function closeFullscreen() {
 function handleFullscreenClick(event) {
   // Prevent event bubbling to the galleryFullscreen click handler
   event.stopPropagation();
-  
+
   // Pause the slideshow if it's running
   if (slideshowInterval) {
     toggleSlideshow();
@@ -372,15 +406,16 @@ function handleFullscreenBackgroundClick(event) {
 }
 
 function displayFullscreenItem() {
+  // Use currentGalleryItems for fullscreen navigation
   const file = currentGalleryItems[currentGalleryIndex];
   fullscreenContent.innerHTML = '';
-  
+
   if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
+    // Request a higher resolution for fullscreen
     img.src = file.url.replace('&sz=w1000', '&sz=w1920');
     img.alt = file.name;
     fullscreenContent.appendChild(img);
-    
   } else if (file.mimeType.startsWith('video/')) {
     const iframe = document.createElement('iframe');
     iframe.src = file.url;
@@ -388,7 +423,7 @@ function displayFullscreenItem() {
     iframe.frameBorder = '0';
     fullscreenContent.appendChild(iframe);
   }
-  
+
   fullscreenCaption.textContent = file.name;
 }
 
