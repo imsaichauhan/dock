@@ -66,7 +66,7 @@ function setupUploadFunctionality() {
     handleFileSelection(fileInput.files);
   });
   
-  // Note: we now use the simplified upload function.
+  // Use the simplified upload function.
   uploadButton.addEventListener('click', uploadFilesSimplified);
   clearFilesButton.addEventListener('click', clearFileSelection);
   
@@ -88,6 +88,7 @@ function handleFileSelection(files) {
   if (!files || files.length === 0) return;
   
   selectedFiles = [];
+  // Clear the preview list completely; no per‑file progress text is added.
   uploadPreviewList.innerHTML = '';
   let validFilesFound = false;
   
@@ -112,7 +113,7 @@ function handleFileSelection(files) {
     selectedFiles.push(file);
     validFilesFound = true;
     
-    // Create a simple preview item without per-file progress tracking.
+    // Create a simple thumbnail preview without any "Waiting..." text.
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
     previewItem.dataset.index = i;
@@ -139,6 +140,9 @@ function handleFileSelection(files) {
   
   if (validFilesFound) {
     uploadPreviewContainer.classList.remove('hidden');
+    // Hide the progress container if it exists.
+    const progressContainer = document.getElementById('upload-progress-container');
+    if (progressContainer) progressContainer.classList.add('hidden');
     uploadButton.disabled = false;
     clearFilesButton.classList.remove('hidden');
     showUploadMessage('', '');
@@ -161,6 +165,10 @@ function clearFileSelection() {
   clearFilesButton.classList.add('hidden');
   fileInput.value = '';
   showUploadMessage('', '');
+  
+  // Also hide the progress container if it exists.
+  const progressContainer = document.getElementById('upload-progress-container');
+  if (progressContainer) progressContainer.classList.add('hidden');
 }
 
 function showUploadMessage(message, type) {
@@ -188,6 +196,10 @@ function uploadFilesSimplified() {
   fileInput.disabled = true;
   uploadDropzone.style.pointerEvents = 'none';
   
+  // Hide the progress container if it exists.
+  const progressContainer = document.getElementById('upload-progress-container');
+  if (progressContainer) progressContainer.classList.add('hidden');
+  
   // Show overall uploading message.
   showUploadMessage('Uploading files, please wait...', '');
   
@@ -196,7 +208,7 @@ function uploadFilesSimplified() {
     return new Promise((resolve, reject) => {
       const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
       window[callbackName] = function(response) {
-        // Remove script element if it exists.
+        // Remove the script element if it exists.
         const scriptElement = document.getElementById('upload-script-' + index);
         if (scriptElement) {
           document.body.removeChild(scriptElement);
