@@ -24,25 +24,25 @@ const fullscreenNext = document.getElementById('fullscreen-next');
 const fullscreenPlay = document.getElementById('fullscreen-play');
 const galleryNavItem = document.getElementById('gallery-nav-item');
 const uploadNavItem = document.getElementById('upload-nav-item');
-// "View More" button for gallery pagination
-const viewMoreButton = document.getElementById('view-more');
+
+// Create a sentinel element for infinite scrolling
+const sentinel = document.createElement('div');
+sentinel.id = 'gallery-sentinel';
+galleryGrid.parentNode.appendChild(sentinel);
 
 // ------------------------
 // Global Variables
 // ------------------------
 let selectedFiles = [];
-let currentGalleryItems = []; // Full list in randomized order
-let allGalleryItems = [];     // Internal copy (shuffled) of fetched files
-let displayedItems = 0;       // How many items have been rendered so far
-const itemsPerLoad = 20;      // Items per load
+let currentGalleryItems = []; // All fetched items (shuffled)
+let displayedItems = 0;       // Number of items currently rendered
+const itemsPerLoad = 20;      // Load 20 items at a time
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
-
-// New: Will hold the visual (sorted) order of files for fullscreen navigation.
-let sortedGalleryFiles = [];
+let sortedGalleryFiles = [];  // Visual order for fullscreen
 
 // ------------------------
-// Upload Functions
+// Upload Functions (unchanged)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -112,6 +112,7 @@ function handleFileSelection(files) {
     if (isImage) {
       const img = document.createElement('img');
       img.src = URL.createObjectURL(file);
+      img.loading = 'lazy';
       img.onload = () => URL.revokeObjectURL(img.src);
       previewThumb.appendChild(img);
     } else if (isVideo) {
@@ -154,9 +155,6 @@ function showUploadMessage(message, type) {
   uploadMessage.className = 'upload-message ' + type;
 }
 
-// ------------------------
-// Upload Multiple Files in Parallel using Promises
-// ------------------------
 function uploadFilesParallel() {
   if (selectedFiles.length === 0) {
     showUploadMessage('No files selected.', 'error');
@@ -262,14 +260,11 @@ function setupGalleryFunctionality() {
     console.error('Missing gallery DOM elements');
     return;
   }
-  // Reset displayed count for fresh load
+  // Reset count and load initial items
   displayedItems = 0;
   fetchGalleryItems();
-  // Refresh gallery every 5 minutes
-  setInterval(fetchGalleryItems, 5 * 60 * 1000);
-  if (viewMoreButton) {
-    viewMoreButton.addEventListener('click', loadMoreGalleryItems);
-  }
+  // Set up the IntersectionObserver for infinite scrolling
+  setupInfiniteScroll();
 }
 
 function fetchGalleryItems() {
@@ -287,12 +282,12 @@ function handleGalleryResponse(data) {
   console.log("Gallery API response:", data);
 
   if (data && data.success && data.files && data.files.length > 0) {
-    // On first load, shuffle and render; later, only append new items.
+    // On first load, shuffle and set currentGalleryItems.
     if (displayedItems === 0) {
-      allGalleryItems = shuffleArray(data.files);
-      currentGalleryItems = allGalleryItems;
+      currentGalleryItems = shuffleArray(data.files);
       displayGalleryItems();
     } else {
+      // Append new items that haven't been displayed.
       const newItems = shuffleArray(data.files);
       const displayedOnes = currentGalleryItems.slice(0, displayedItems);
       currentGalleryItems = displayedOnes.concat(
@@ -300,7 +295,6 @@ function handleGalleryResponse(data) {
           !displayedOnes.some(oldItem => oldItem.url === newItem.url)
         )
       );
-      updateViewMoreButton();
     }
   } else {
     console.error("Gallery API error or empty files array:", data);
@@ -311,33 +305,18 @@ function handleGalleryResponse(data) {
 }
 
 function displayGalleryItems() {
-  // Display initial batch of items (first 20)
-  const itemsToShow = currentGalleryItems.slice(0, itemsPerLoad);
-  galleryGrid.innerHTML = '';
-  
+  // Render the next batch of items (20 at a time)
+  const itemsToShow = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
   itemsToShow.forEach((file) => {
     addGalleryItem(file);
   });
-
-  displayedItems = itemsToShow.length;
-  updateViewMoreButton();
-}
-
-function loadMoreGalleryItems() {
-  const newItems = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
-  
-  newItems.forEach((file) => {
-    addGalleryItem(file);
-  });
-  
-  displayedItems += newItems.length;
-  updateViewMoreButton();
+  displayedItems += itemsToShow.length;
 }
 
 function addGalleryItem(file) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
-  // Store file data on the item so it can be retrieved later.
+  // Store file data on the item.
   item.fileData = file;
 
   const mediaContainer = document.createElement('div');
@@ -347,9 +326,10 @@ function addGalleryItem(file) {
     const img = document.createElement('img');
     img.src = file.url;
     img.alt = file.name;
+    // Use native lazy loading.
     img.loading = 'lazy';
     img.onerror = function() {
-      this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,...';
     };
     mediaContainer.appendChild(img);
   } else if (file.mimeType.startsWith('video/')) {
@@ -360,8 +340,8 @@ function addGalleryItem(file) {
     iframe.frameBorder = '0';
     iframe.allow = 'autoplay; fullscreen';
     iframe.allowFullscreen = true;
-    videoWrapper.appendChild(iframe);
     mediaContainer.appendChild(videoWrapper);
+    videoWrapper.appendChild(iframe);
   }
 
   if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
@@ -371,22 +351,18 @@ function addGalleryItem(file) {
     mediaContainer.appendChild(uploader);
   }
 
-  // Instead of relying on a fixed dataset index,
-  // add a click listener that computes the visual order.
+  // Add a click listener for fullscreen navigation.
   mediaContainer.addEventListener('click', () => {
-    // Get all gallery items currently in the grid.
+    // Rebuild the visual order array using DOM order.
     const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
-    // Sort them based on their position on the screen.
     const sortedItems = items.slice().sort((a, b) => {
       const aRect = a.getBoundingClientRect();
       const bRect = b.getBoundingClientRect();
-      // If items are on the same row (within 5px), sort by left.
       if (Math.abs(aRect.top - bRect.top) < 5) {
         return aRect.left - bRect.left;
       }
       return aRect.top - bRect.top;
     });
-    // Build the visual order array from each item's stored file data.
     sortedGalleryFiles = sortedItems.map(item => item.fileData);
     const index = sortedItems.indexOf(item);
     openFullscreen(index);
@@ -396,10 +372,23 @@ function addGalleryItem(file) {
   galleryGrid.appendChild(item);
 }
 
-function updateViewMoreButton() {
-  if (viewMoreButton) {
-    viewMoreButton.style.display = (currentGalleryItems.length > displayedItems) ? 'block' : 'none';
-  }
+// ------------------------
+// Infinite Scrolling Setup
+// ------------------------
+function setupInfiniteScroll() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Load more items when the sentinel is in view
+        if (displayedItems < currentGalleryItems.length) {
+          displayGalleryItems();
+        }
+      }
+    });
+  }, {
+    rootMargin: '100px',
+  });
+  observer.observe(sentinel);
 }
 
 // Fisher-Yates shuffle algorithm
@@ -449,7 +438,6 @@ function handleFullscreenBackgroundClick(event) {
 }
 
 function displayFullscreenItem() {
-  // Ensure currentGalleryIndex wraps around.
   if (currentGalleryIndex < 0) {
     currentGalleryIndex = sortedGalleryFiles.length - 1;
   } else if (currentGalleryIndex >= sortedGalleryFiles.length) {
