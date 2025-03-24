@@ -257,12 +257,29 @@ function setupGalleryFunctionality() {
     return;
   }
   
+  // Remove any existing sentinel elements first to avoid duplicates
+  const existingSentinel = document.getElementById('gallery-sentinel');
+  if (existingSentinel) {
+    existingSentinel.remove();
+  }
+  
+  // Clear the gallery grid before creating a new sentinel
+  // This prevents duplicate "Loading gallery..." messages
+  galleryGrid.innerHTML = '';
+  
   // Create a sentinel element for infinite scrolling
   sentinel = document.createElement('div');
   sentinel.id = 'gallery-sentinel';
   sentinel.className = 'gallery-sentinel';
   sentinel.innerHTML = '<div class="loading-indicator">Loading gallery...</div>';
-  galleryGrid.appendChild(sentinel); // Add it inside the gallery grid
+  
+  // Add it at the end of the gallery, not in the grid flow
+  sentinel.style.gridColumn = '1 / -1'; // Make it span all columns
+  sentinel.style.display = 'flex';
+  sentinel.style.justifyContent = 'center';
+  sentinel.style.padding = '20px';
+  
+  galleryGrid.appendChild(sentinel);
   
   // Reset count and load initial items
   displayedItems = 0;
@@ -364,22 +381,21 @@ function addGalleryItem(file) {
   // Add a click listener for fullscreen navigation.
   mediaContainer.addEventListener('click', () => {
     // Rebuild the visual order array using DOM order.
-    const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
-    const sortedItems = items.slice().sort((a, b) => {
-      const aRect = a.getBoundingClientRect();
-      const bRect = b.getBoundingClientRect();
-      if (Math.abs(aRect.top - bRect.top) < 5) {
-        return aRect.left - bRect.left;
-      }
-      return aRect.top - bRect.top;
-    });
-    sortedGalleryFiles = sortedItems.map(item => item.fileData);
-    const index = sortedItems.indexOf(item);
+    rebuildSortedGalleryFiles();
+    const index = sortedGalleryFiles.findIndex(f => f.url === file.url);
     openFullscreen(index);
   });
   
   item.appendChild(mediaContainer);
   galleryGrid.appendChild(item);
+}
+
+// Function to rebuild sorted gallery files from the current DOM
+function rebuildSortedGalleryFiles() {
+  const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
+  
+  // Use the actual visual order - first by rows then by columns
+  sortedGalleryFiles = items.map(item => item.fileData);
 }
 
 // ------------------------
@@ -451,6 +467,8 @@ function handleFullscreenBackgroundClick(event) {
 }
 
 function displayFullscreenItem() {
+  if (sortedGalleryFiles.length === 0) return;
+  
   if (currentGalleryIndex < 0) {
     currentGalleryIndex = sortedGalleryFiles.length - 1;
   } else if (currentGalleryIndex >= sortedGalleryFiles.length) {
@@ -458,6 +476,8 @@ function displayFullscreenItem() {
   }
   
   const file = sortedGalleryFiles[currentGalleryIndex];
+  if (!file) return;
+  
   fullscreenContent.innerHTML = '';
 
   if (file.mimeType.startsWith('image/')) {
