@@ -1237,3 +1237,29 @@ nav {
     grid-template-columns: repeat(4, 1fr); /* Desktop: four columns */
   }
 }
+
+/* Responsive Gallery Grid for Mobile Devices */
+@media screen and (max-width: 768px) {
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 equal-width columns */
+    gap: 10px; /* Space between grid items */
+  }
+
+  .gallery-item {
+    aspect-ratio: 1 / 1; /* Square items to maintain consistent layout */
+    overflow: hidden;
+  }
+
+  .gallery-item .media-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  .gallery-item img,
+  .gallery-item .video-wrapper iframe {
+    object-fit: cover; /* Ensure images/videos fill the grid cell */
+    width: 100%;
+    height: 100%;
+  }
+}
