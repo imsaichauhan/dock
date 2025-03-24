@@ -35,10 +35,10 @@ const itemsPerLoad = 20;      // Load 20 items at a time
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
 let sortedGalleryFiles = [];  // Visual order for fullscreen
-let sentinel = null;          // For infinite scrolling
+let sentinel = null;          // Moved to global scope for access across functions
 
 // ------------------------
-// Upload Functions (Simplified)
+// Upload Functions (improved)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -63,7 +63,7 @@ function setupUploadFunctionality() {
   fileInput.addEventListener('change', () => {
     handleFileSelection(fileInput.files);
   });
-  uploadButton.addEventListener('click', uploadFilesSimple);
+  uploadButton.addEventListener('click', uploadFilesParallel);
   clearFilesButton.addEventListener('click', clearFileSelection);
   if (fullscreenClose) {
     fullscreenClose.addEventListener('click', closeFullscreen);
@@ -102,7 +102,7 @@ function handleFileSelection(files) {
     selectedFiles.push(file);
     validFilesFound = true;
     
-    // Create a preview item
+    // Create preview item with progress indicator overlay
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
     previewItem.dataset.index = i;
@@ -123,7 +123,12 @@ function handleFileSelection(files) {
       previewThumb.appendChild(videoIcon);
     }
     
+    // Add per-file progress overlay
+    const fileProgress = document.createElement('div');
+    fileProgress.className = 'upload-file-progress';
+    fileProgress.textContent = 'Waiting...';
     previewItem.appendChild(previewThumb);
+    previewItem.appendChild(fileProgress);
     uploadPreviewList.appendChild(previewItem);
   }
   if (validFilesFound) {
@@ -157,7 +162,7 @@ function showUploadMessage(message, type) {
   uploadMessage.className = 'upload-message ' + type;
 }
 
-function uploadFilesSimple() {
+function uploadFilesParallel() {
   if (selectedFiles.length === 0) {
     showUploadMessage('No files selected.', 'error');
     return;
@@ -168,62 +173,124 @@ function uploadFilesSimple() {
     return;
   }
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
-  
-  // Disable UI elements during upload
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
+  
+  // Add a visual effect to the dropzone when uploading begins
   uploadDropzone.classList.add('uploading');
   
-  // Show overall message/spinner
-  showUploadMessage('Uploading files, please wait…', '');
+  uploadProgressContainer.classList.remove('hidden');
+  uploadProgressBar.style.width = '0%';
+  uploadProgressText.textContent = '0% Complete';
   
-  // Create a FormData object for all files
-  const formData = new FormData();
-  formData.append('inviteCode', inviteCode);
-  formData.append('guestName', guestName);
-  for (let i = 0; i < selectedFiles.length; i++) {
-    formData.append('file' + i, selectedFiles[i]);
-  }
-  
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', CONFIG.UPLOAD_GALLERY_API_URL);
-  
-  xhr.onload = function() {
-    // Re-enable UI elements
-    uploadButton.disabled = false;
-    clearFilesButton.disabled = false;
-    uploadDropzone.classList.remove('uploading');
-    
-    if (xhr.status === 200) {
-      let response;
-      try {
-        response = JSON.parse(xhr.responseText);
-      } catch (e) {
-        response = {};
+  let uploadedCount = 0;
+  const uploadPromises = selectedFiles.map((file, index) => {
+    return new Promise((resolve, reject) => {
+      const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
+      window[callbackName] = function(response) {
+        const scriptElement = document.getElementById('upload-script-' + index);
+        if (scriptElement) {
+          document.body.removeChild(scriptElement);
+        }
+        delete window[callbackName];
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(response.error || 'Upload failed.');
+        }
+      };
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Data = e.target.result.split(',')[1];
+        const url = new URL(CONFIG.UPLOAD_GALLERY_API_URL);
+        url.searchParams.append('fileUpload', 'true');
+        url.searchParams.append('inviteCode', inviteCode);
+        url.searchParams.append('guestName', guestName);
+        url.searchParams.append('index', index);
+        url.searchParams.append('callback', callbackName);
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url.toString();
+        const iframeId = 'upload-iframe-' + index;
+        let iframe = document.getElementById(iframeId);
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = iframeId;
+          iframe.name = iframeId;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+        }
+        form.target = iframeId;
+        form.enctype = 'application/json';
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'json';
+        input.value = JSON.stringify({
+          fileData: base64Data,
+          fileName: file.name,
+          mimeType: file.type
+        });
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        setTimeout(() => {
+          document.body.removeChild(form);
+        }, 1000);
+      };
+      reader.readAsDataURL(file);
+    }).then(response => {
+      uploadedCount++;
+      // Update overall progress
+      const progress = Math.round((uploadedCount / selectedFiles.length) * 100);
+      uploadProgressBar.style.width = progress + '%';
+      uploadProgressText.textContent = progress + '% Complete';
+      
+      // Update individual file progress indicator
+      const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
+      if (previewItem) {
+        const fileProgress = previewItem.querySelector('.upload-file-progress');
+        if (fileProgress) {
+          fileProgress.textContent = 'Uploaded';
+          fileProgress.classList.add('upload-success');
+        }
       }
-      if (response.success) {
+      return response;
+    }).catch(error => {
+      // Mark the file as failed in its preview
+      const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
+      if (previewItem) {
+        const fileProgress = previewItem.querySelector('.upload-file-progress');
+        if (fileProgress) {
+          fileProgress.textContent = 'Failed';
+          fileProgress.classList.add('upload-failed');
+        }
+      }
+      throw error;
+    });
+  });
+  Promise.all(uploadPromises)
+    .then(results => {
+      setTimeout(() => {
+        uploadButton.disabled = false;
+        clearFilesButton.disabled = false;
+        uploadProgressContainer.classList.add('hidden');
+        // Remove uploading visual effect
+        uploadDropzone.classList.remove('uploading');
         showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
         clearFileSelection();
-      } else {
-        showUploadMessage(response.error || 'Upload failed.', 'error');
-      }
-    } else {
-      showUploadMessage('Upload failed with status ' + xhr.status, 'error');
-    }
-  };
-  
-  xhr.onerror = function() {
-    uploadButton.disabled = false;
-    clearFilesButton.disabled = false;
-    uploadDropzone.classList.remove('uploading');
-    showUploadMessage('Upload failed due to a network error.', 'error');
-  };
-  
-  xhr.send(formData);
+      }, 1000);
+    })
+    .catch(error => {
+      showUploadMessage(error, 'error');
+      uploadButton.disabled = false;
+      clearFilesButton.disabled = false;
+      uploadProgressContainer.classList.add('hidden');
+      uploadDropzone.classList.remove('uploading');
+    });
 }
 
 // ------------------------
-// Gallery Functions
+// Gallery Functions (unchanged)
 // ------------------------
 function setupGalleryFunctionality() {
   if (!gallerySection || !galleryGrid) {
@@ -231,26 +298,35 @@ function setupGalleryFunctionality() {
     return;
   }
   
-  // Remove any existing sentinel elements
+  // Remove any existing sentinel elements first to avoid duplicates
   const existingSentinel = document.getElementById('gallery-sentinel');
   if (existingSentinel) {
     existingSentinel.remove();
   }
   
-  // Clear gallery grid and create a sentinel element for infinite scrolling
+  // Clear the gallery grid before creating a new sentinel
+  // This prevents duplicate "Loading gallery..." messages
   galleryGrid.innerHTML = '';
+  
+  // Create a sentinel element for infinite scrolling
   sentinel = document.createElement('div');
   sentinel.id = 'gallery-sentinel';
   sentinel.className = 'gallery-sentinel';
   sentinel.innerHTML = '<div class="loading-indicator">Loading gallery...</div>';
-  sentinel.style.gridColumn = '1 / -1';
+  
+  // Add it at the end of the gallery, not in the grid flow
+  sentinel.style.gridColumn = '1 / -1'; // Make it span all columns
   sentinel.style.display = 'flex';
   sentinel.style.justifyContent = 'center';
   sentinel.style.padding = '20px';
+  
   galleryGrid.appendChild(sentinel);
   
+  // Reset count and load initial items
   displayedItems = 0;
   fetchGalleryItems();
+  
+  // Set up the IntersectionObserver for infinite scrolling
   setupInfiniteScroll();
 }
 
@@ -265,16 +341,20 @@ function handleGalleryResponse(data) {
   if (scriptTag) {
     document.body.removeChild(scriptTag);
   }
+
   console.log("Gallery API response:", data);
+
   if (data && data.success && data.files && data.files.length > 0) {
+    // On first load, shuffle and set currentGalleryItems.
     if (displayedItems === 0) {
       currentGalleryItems = shuffleArray(data.files);
       displayGalleryItems();
     } else {
+      // Append new items that haven't been displayed.
       const newItems = shuffleArray(data.files);
       const displayedOnes = currentGalleryItems.slice(0, displayedItems);
       currentGalleryItems = displayedOnes.concat(
-        newItems.filter(newItem =>
+        newItems.filter(newItem => 
           !displayedOnes.some(oldItem => oldItem.url === newItem.url)
         )
       );
@@ -288,11 +368,14 @@ function handleGalleryResponse(data) {
 }
 
 function displayGalleryItems() {
+  // Render the next batch of items (20 at a time)
   const itemsToShow = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
   itemsToShow.forEach((file) => {
     addGalleryItem(file);
   });
   displayedItems += itemsToShow.length;
+  
+  // Move sentinel to end of gallery after adding new items
   if (sentinel) {
     galleryGrid.appendChild(sentinel);
   }
@@ -301,15 +384,17 @@ function displayGalleryItems() {
 function addGalleryItem(file) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
+  // Store file data on the item.
   item.fileData = file;
-  
+
   const mediaContainer = document.createElement('div');
   mediaContainer.className = 'media-container';
-  
+
   if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
     img.src = file.url;
     img.alt = file.name;
+    // Use native lazy loading.
     img.loading = 'lazy';
     img.onerror = function() {
       this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,...';
@@ -326,15 +411,17 @@ function addGalleryItem(file) {
     mediaContainer.appendChild(videoWrapper);
     videoWrapper.appendChild(iframe);
   }
-  
+
   if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
     const uploader = document.createElement('div');
     uploader.className = 'gallery-uploader';
     uploader.textContent = file.uploader;
     mediaContainer.appendChild(uploader);
   }
-  
+
+  // Add a click listener for fullscreen navigation.
   mediaContainer.addEventListener('click', () => {
+    // Rebuild the visual order array using DOM order.
     rebuildSortedGalleryFiles();
     const index = sortedGalleryFiles.findIndex(f => f.url === file.url);
     openFullscreen(index);
@@ -344,8 +431,11 @@ function addGalleryItem(file) {
   galleryGrid.appendChild(item);
 }
 
+// Function to rebuild sorted gallery files from the current DOM
 function rebuildSortedGalleryFiles() {
   const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
+  
+  // Use the actual visual order - first by rows then by columns
   sortedGalleryFiles = items.map(item => item.fileData);
 }
 
@@ -356,6 +446,7 @@ function setupInfiniteScroll() {
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
+        // Load more items when the sentinel is in view
         if (displayedItems < currentGalleryItems.length) {
           displayGalleryItems();
         }
@@ -364,11 +455,13 @@ function setupInfiniteScroll() {
   }, {
     rootMargin: '100px',
   });
+  
   if (sentinel) {
     observer.observe(sentinel);
   }
 }
 
+// Fisher-Yates shuffle algorithm
 function shuffleArray(array) {
   let shuffled = array.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -379,7 +472,7 @@ function shuffleArray(array) {
 }
 
 // ------------------------
-// Fullscreen Gallery Functions
+// Fullscreen Gallery Functions (unchanged)
 // ------------------------
 function openFullscreen(position) {
   currentGalleryIndex = position;
@@ -416,14 +509,18 @@ function handleFullscreenBackgroundClick(event) {
 
 function displayFullscreenItem() {
   if (sortedGalleryFiles.length === 0) return;
+  
   if (currentGalleryIndex < 0) {
     currentGalleryIndex = sortedGalleryFiles.length - 1;
   } else if (currentGalleryIndex >= sortedGalleryFiles.length) {
     currentGalleryIndex = 0;
   }
+  
   const file = sortedGalleryFiles[currentGalleryIndex];
   if (!file) return;
+  
   fullscreenContent.innerHTML = '';
+
   if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
     img.src = file.url.replace('&sz=w1000', '&sz=w1920');
@@ -436,6 +533,7 @@ function displayFullscreenItem() {
     iframe.frameBorder = '0';
     fullscreenContent.appendChild(iframe);
   }
+
   fullscreenCaption.textContent = file.name;
 }
 
