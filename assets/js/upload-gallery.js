@@ -25,11 +25,6 @@ const fullscreenPlay = document.getElementById('fullscreen-play');
 const galleryNavItem = document.getElementById('gallery-nav-item');
 const uploadNavItem = document.getElementById('upload-nav-item');
 
-// Create a sentinel element for infinite scrolling
-const sentinel = document.createElement('div');
-sentinel.id = 'gallery-sentinel';
-galleryGrid.parentNode.appendChild(sentinel);
-
 // ------------------------
 // Global Variables
 // ------------------------
@@ -40,6 +35,7 @@ const itemsPerLoad = 20;      // Load 20 items at a time
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
 let sortedGalleryFiles = [];  // Visual order for fullscreen
+let sentinel = null;          // Moved to global scope for access across functions
 
 // ------------------------
 // Upload Functions (unchanged)
@@ -260,9 +256,18 @@ function setupGalleryFunctionality() {
     console.error('Missing gallery DOM elements');
     return;
   }
+  
+  // Create a sentinel element for infinite scrolling
+  sentinel = document.createElement('div');
+  sentinel.id = 'gallery-sentinel';
+  sentinel.className = 'gallery-sentinel';
+  sentinel.innerHTML = '<div class="loading-indicator">Loading gallery...</div>';
+  galleryGrid.appendChild(sentinel); // Add it inside the gallery grid
+  
   // Reset count and load initial items
   displayedItems = 0;
   fetchGalleryItems();
+  
   // Set up the IntersectionObserver for infinite scrolling
   setupInfiniteScroll();
 }
@@ -311,6 +316,11 @@ function displayGalleryItems() {
     addGalleryItem(file);
   });
   displayedItems += itemsToShow.length;
+  
+  // Move sentinel to end of gallery after adding new items
+  if (sentinel) {
+    galleryGrid.appendChild(sentinel);
+  }
 }
 
 function addGalleryItem(file) {
@@ -388,7 +398,10 @@ function setupInfiniteScroll() {
   }, {
     rootMargin: '100px',
   });
-  observer.observe(sentinel);
+  
+  if (sentinel) {
+    observer.observe(sentinel);
+  }
 }
 
 // Fisher-Yates shuffle algorithm
