@@ -32,12 +32,14 @@ const viewMoreButton = document.getElementById('view-more');
 // ------------------------
 let selectedFiles = [];
 let currentGalleryItems = []; // Full list in randomized order
-let displayedGalleryItems = []; // Items displayed in the gallery, in visual order
 let allGalleryItems = [];     // Internal copy (shuffled) of fetched files
 let displayedItems = 0;       // How many items have been rendered so far
 const itemsPerLoad = 20;      // Items per load
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
+
+// New: Will hold the visual (sorted) order of files for fullscreen navigation.
+let sortedGalleryFiles = [];
 
 // ------------------------
 // Upload Functions
@@ -262,7 +264,6 @@ function setupGalleryFunctionality() {
   }
   // Reset displayed count for fresh load
   displayedItems = 0;
-  displayedGalleryItems = [];
   fetchGalleryItems();
   // Refresh gallery every 5 minutes
   setInterval(fetchGalleryItems, 5 * 60 * 1000);
@@ -286,13 +287,12 @@ function handleGalleryResponse(data) {
   console.log("Gallery API response:", data);
 
   if (data && data.success && data.files && data.files.length > 0) {
-    // Only reshuffle and reset if this is the first load or gallery is empty
+    // On first load, shuffle and render; later, only append new items.
     if (displayedItems === 0) {
       allGalleryItems = shuffleArray(data.files);
       currentGalleryItems = allGalleryItems;
       displayGalleryItems();
     } else {
-      // For subsequent refreshes, just update the items that haven't been displayed yet
       const newItems = shuffleArray(data.files);
       const displayedOnes = currentGalleryItems.slice(0, displayedItems);
       currentGalleryItems = displayedOnes.concat(
@@ -314,11 +314,9 @@ function displayGalleryItems() {
   // Display initial batch of items (first 20)
   const itemsToShow = currentGalleryItems.slice(0, itemsPerLoad);
   galleryGrid.innerHTML = '';
-  displayedGalleryItems = [];
   
-  itemsToShow.forEach((file, index) => {
+  itemsToShow.forEach((file) => {
     addGalleryItem(file);
-    displayedGalleryItems.push(file);
   });
 
   displayedItems = itemsToShow.length;
@@ -330,7 +328,6 @@ function loadMoreGalleryItems() {
   
   newItems.forEach((file) => {
     addGalleryItem(file);
-    displayedGalleryItems.push(file);
   });
   
   displayedItems += newItems.length;
@@ -340,6 +337,8 @@ function loadMoreGalleryItems() {
 function addGalleryItem(file) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
+  // Store file data on the item so it can be retrieved later.
+  item.fileData = file;
 
   const mediaContainer = document.createElement('div');
   mediaContainer.className = 'media-container';
@@ -372,10 +371,24 @@ function addGalleryItem(file) {
     mediaContainer.appendChild(uploader);
   }
 
-  // Use the visual order: get current index based on gallery-grid children order
+  // Instead of relying on a fixed dataset index,
+  // add a click listener that computes the visual order.
   mediaContainer.addEventListener('click', () => {
+    // Get all gallery items currently in the grid.
     const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
-    const index = items.indexOf(item);
+    // Sort them based on their position on the screen.
+    const sortedItems = items.slice().sort((a, b) => {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      // If items are on the same row (within 5px), sort by left.
+      if (Math.abs(aRect.top - bRect.top) < 5) {
+        return aRect.left - bRect.left;
+      }
+      return aRect.top - bRect.top;
+    });
+    // Build the visual order array from each item's stored file data.
+    sortedGalleryFiles = sortedItems.map(item => item.fileData);
+    const index = sortedItems.indexOf(item);
     openFullscreen(index);
   });
   
@@ -385,11 +398,7 @@ function addGalleryItem(file) {
 
 function updateViewMoreButton() {
   if (viewMoreButton) {
-    if (currentGalleryItems.length > displayedItems) {
-      viewMoreButton.style.display = 'block';
-    } else {
-      viewMoreButton.style.display = 'none';
-    }
+    viewMoreButton.style.display = (currentGalleryItems.length > displayedItems) ? 'block' : 'none';
   }
 }
 
@@ -440,13 +449,14 @@ function handleFullscreenBackgroundClick(event) {
 }
 
 function displayFullscreenItem() {
+  // Ensure currentGalleryIndex wraps around.
   if (currentGalleryIndex < 0) {
-    currentGalleryIndex = displayedGalleryItems.length - 1;
-  } else if (currentGalleryIndex >= displayedGalleryItems.length) {
+    currentGalleryIndex = sortedGalleryFiles.length - 1;
+  } else if (currentGalleryIndex >= sortedGalleryFiles.length) {
     currentGalleryIndex = 0;
   }
   
-  const file = displayedGalleryItems[currentGalleryIndex];
+  const file = sortedGalleryFiles[currentGalleryIndex];
   fullscreenContent.innerHTML = '';
 
   if (file.mimeType.startsWith('image/')) {
@@ -466,11 +476,11 @@ function displayFullscreenItem() {
 }
 
 function navigateGallery(direction) {
-  if (displayedGalleryItems.length === 0) return;
+  if (sortedGalleryFiles.length === 0) return;
   currentGalleryIndex += direction;
   if (currentGalleryIndex < 0) {
-    currentGalleryIndex = displayedGalleryItems.length - 1;
-  } else if (currentGalleryIndex >= displayedGalleryItems.length) {
+    currentGalleryIndex = sortedGalleryFiles.length - 1;
+  } else if (currentGalleryIndex >= sortedGalleryFiles.length) {
     currentGalleryIndex = 0;
   }
   displayFullscreenItem();
