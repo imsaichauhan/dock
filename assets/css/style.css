@@ -1219,3 +1219,21 @@ nav {
   border-radius: 4px;
   font-size: 12px;
 }
+
+#gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 600px) {
+  #gallery-grid {
+    grid-template-columns: repeat(3, 1fr); /* Tablet: three columns */
+  }
+}
+
+@media (min-width: 1024px) {
+  #gallery-grid {
+    grid-template-columns: repeat(4, 1fr); /* Desktop: four columns */
+  }
+}
