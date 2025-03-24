@@ -38,7 +38,7 @@ let sortedGalleryFiles = [];  // Visual order for fullscreen
 let sentinel = null;          // Moved to global scope for access across functions
 
 // ------------------------
-// Upload Functions (unchanged)
+// Upload Functions (improved)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -101,10 +101,15 @@ function handleFileSelection(files) {
     }
     selectedFiles.push(file);
     validFilesFound = true;
+    
+    // Create preview item with progress indicator overlay
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
+    previewItem.dataset.index = i;
+    
     const previewThumb = document.createElement('div');
     previewThumb.className = 'preview-thumbnail';
+    
     if (isImage) {
       const img = document.createElement('img');
       img.src = URL.createObjectURL(file);
@@ -117,7 +122,13 @@ function handleFileSelection(files) {
       videoIcon.innerHTML = '🎥';
       previewThumb.appendChild(videoIcon);
     }
+    
+    // Add per-file progress overlay
+    const fileProgress = document.createElement('div');
+    fileProgress.className = 'upload-file-progress';
+    fileProgress.textContent = 'Waiting...';
     previewItem.appendChild(previewThumb);
+    previewItem.appendChild(fileProgress);
     uploadPreviewList.appendChild(previewItem);
   }
   if (validFilesFound) {
@@ -164,9 +175,14 @@ function uploadFilesParallel() {
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
+  
+  // Add a visual effect to the dropzone when uploading begins
+  uploadDropzone.classList.add('uploading');
+  
   uploadProgressContainer.classList.remove('hidden');
   uploadProgressBar.style.width = '0%';
   uploadProgressText.textContent = '0% Complete';
+  
   let uploadedCount = 0;
   const uploadPromises = selectedFiles.map((file, index) => {
     return new Promise((resolve, reject) => {
@@ -224,10 +240,32 @@ function uploadFilesParallel() {
       reader.readAsDataURL(file);
     }).then(response => {
       uploadedCount++;
+      // Update overall progress
       const progress = Math.round((uploadedCount / selectedFiles.length) * 100);
       uploadProgressBar.style.width = progress + '%';
       uploadProgressText.textContent = progress + '% Complete';
+      
+      // Update individual file progress indicator
+      const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
+      if (previewItem) {
+        const fileProgress = previewItem.querySelector('.upload-file-progress');
+        if (fileProgress) {
+          fileProgress.textContent = 'Uploaded';
+          fileProgress.classList.add('upload-success');
+        }
+      }
       return response;
+    }).catch(error => {
+      // Mark the file as failed in its preview
+      const previewItem = uploadPreviewList.querySelector(`.upload-preview-item[data-index="${index}"]`);
+      if (previewItem) {
+        const fileProgress = previewItem.querySelector('.upload-file-progress');
+        if (fileProgress) {
+          fileProgress.textContent = 'Failed';
+          fileProgress.classList.add('upload-failed');
+        }
+      }
+      throw error;
     });
   });
   Promise.all(uploadPromises)
@@ -236,6 +274,8 @@ function uploadFilesParallel() {
         uploadButton.disabled = false;
         clearFilesButton.disabled = false;
         uploadProgressContainer.classList.add('hidden');
+        // Remove uploading visual effect
+        uploadDropzone.classList.remove('uploading');
         showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
         clearFileSelection();
       }, 1000);
@@ -245,11 +285,12 @@ function uploadFilesParallel() {
       uploadButton.disabled = false;
       clearFilesButton.disabled = false;
       uploadProgressContainer.classList.add('hidden');
+      uploadDropzone.classList.remove('uploading');
     });
 }
 
 // ------------------------
-// Gallery Functions
+// Gallery Functions (unchanged)
 // ------------------------
 function setupGalleryFunctionality() {
   if (!gallerySection || !galleryGrid) {
@@ -431,7 +472,7 @@ function shuffleArray(array) {
 }
 
 // ------------------------
-// Fullscreen Gallery Functions
+// Fullscreen Gallery Functions (unchanged)
 // ------------------------
 function openFullscreen(position) {
   currentGalleryIndex = position;
