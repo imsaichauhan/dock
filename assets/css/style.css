@@ -907,39 +907,43 @@ nav {
     flex-wrap: wrap;
     gap: 10px;
     padding: 10px;
-  }
+}
   
-  /* Style each preview item */
-  .upload-preview-item {
+/* Style each preview item */
+.upload-preview-item {
+    position: relative; /* For overlay positioning */
     flex: 0 0 auto;
     width: 100px;  /* Thumbnail width */
     text-align: center;
-  }
-  
-  /* Ensure preview images don't overflow the item */
-  .upload-preview-item img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-  }
-/* Hide the preview info (file names and sizes) */
-.upload-preview-item .preview-info {
-    display: none;
-  }
-  
-  /* Optionally, style the preview items to have a fixed size */
-  .upload-preview-item {
-    width: 100px; /* Set a fixed width for each thumbnail */
     margin: 5px;
-  }
+}
   
-  /* Make sure preview images fit within their container */
-  .upload-preview-item img {
+/* Ensure preview images don't overflow the item */
+.upload-preview-item img {
     max-width: 100%;
     height: auto;
     border-radius: 4px;
-  }
-    
+}
+
+/* New: Upload file progress overlay */
+.upload-file-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 2px 0;
+}
+
+/* New: Visual effect for dropzone during upload */
+.upload-dropzone.uploading {
+    border-color: var(--secondary-color);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
 /* Upload Section Styles */
 .upload-section {
     background-color: white;
@@ -960,7 +964,7 @@ nav {
     padding: 40px;
     text-align: center;
     color: #888;
-    transition: background-color var(--transition-speed) ease;
+    transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease;
     margin-bottom: 20px;
 }
 
@@ -1033,8 +1037,6 @@ nav {
 }
 
 /* Existing styles continue below... */
-/* (Rest of your CSS remains unchanged) */
-
 /* Gallery Grid Layout */
 .gallery-grid {
   display: grid;
