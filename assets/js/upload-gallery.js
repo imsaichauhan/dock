@@ -32,13 +32,12 @@ const viewMoreButton = document.getElementById('view-more');
 // ------------------------
 let selectedFiles = [];
 let currentGalleryItems = []; // Full list in randomized order
+let displayedGalleryItems = []; // Items displayed in the gallery, in order
 let allGalleryItems = [];     // Internal copy (shuffled) of fetched files
 let displayedItems = 0;       // How many items have been rendered so far
 const itemsPerLoad = 20;      // Changed from 12 to 20 items per load
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
-// Map to track displayed items to indices in fullscreen mode
-let galleryItemIndices = [];
 
 // ------------------------
 // Upload Functions
@@ -263,6 +262,7 @@ function setupGalleryFunctionality() {
   }
   // Reset displayed count for fresh load
   displayedItems = 0;
+  displayedGalleryItems = [];
   fetchGalleryItems();
   // Refresh gallery every 5 minutes
   setInterval(fetchGalleryItems, 5 * 60 * 1000);
@@ -318,10 +318,11 @@ function displayGalleryItems() {
   // Display initial batch of items (first 20)
   const itemsToShow = currentGalleryItems.slice(0, itemsPerLoad);
   galleryGrid.innerHTML = '';
-  galleryItemIndices = []; // Reset the indices mapping
+  displayedGalleryItems = []; // Reset displayed gallery items array
   
   itemsToShow.forEach((file, index) => {
     addGalleryItem(file, index);
+    displayedGalleryItems.push(file);
   });
 
   displayedItems = itemsToShow.length;
@@ -334,11 +335,10 @@ function loadMoreGalleryItems() {
   // Get next batch of items
   const newItems = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
   
-  // Append these items to the existing gallery
+  // Append these items to the existing gallery and update the displayed order
   newItems.forEach((file, arrayIndex) => {
-    // The actual index in the full array is displayedItems + arrayIndex
-    const actualIndex = displayedItems + arrayIndex;
-    addGalleryItem(file, actualIndex);
+    addGalleryItem(file, displayedItems + arrayIndex);
+    displayedGalleryItems.push(file);
   });
   
   // Update the displayed count
@@ -386,12 +386,8 @@ function addGalleryItem(file, index) {
     mediaContainer.appendChild(uploader);
   }
 
-  // Store index in the galleryItemIndices array for fullscreen navigation
-  galleryItemIndices.push(index);
-  
-  // Use the index position in the galleryItemIndices array for fullscreen navigation
-  const galleryPosition = galleryItemIndices.length - 1;
-  mediaContainer.addEventListener('click', () => openFullscreen(galleryPosition));
+  // Use the current display order index for fullscreen navigation
+  mediaContainer.addEventListener('click', () => openFullscreen(parseInt(item.dataset.index)));
   
   item.appendChild(mediaContainer);
   galleryGrid.appendChild(item);
@@ -422,7 +418,7 @@ function shuffleArray(array) {
 // Fullscreen Gallery Functions
 // ------------------------
 function openFullscreen(position) {
-  // Convert from display position to actual index in currentGalleryItems
+  // Set currentGalleryIndex to the index in the displayedGalleryItems order
   currentGalleryIndex = position;
   displayFullscreenItem();
   galleryFullscreen.classList.remove('hidden');
@@ -466,14 +462,12 @@ function handleFullscreenBackgroundClick(event) {
 function displayFullscreenItem() {
   // Ensure currentGalleryIndex is within bounds of displayed items
   if (currentGalleryIndex < 0) {
-    currentGalleryIndex = galleryItemIndices.length - 1;
-  } else if (currentGalleryIndex >= galleryItemIndices.length) {
+    currentGalleryIndex = displayedGalleryItems.length - 1;
+  } else if (currentGalleryIndex >= displayedGalleryItems.length) {
     currentGalleryIndex = 0;
   }
   
-  // Get the actual index in currentGalleryItems from our mapping
-  const actualIndex = galleryItemIndices[currentGalleryIndex];
-  const file = currentGalleryItems[actualIndex];
+  const file = displayedGalleryItems[currentGalleryIndex];
   
   fullscreenContent.innerHTML = '';
 
@@ -495,15 +489,15 @@ function displayFullscreenItem() {
 }
 
 function navigateGallery(direction) {
-  if (galleryItemIndices.length === 0) return;
+  if (displayedGalleryItems.length === 0) return;
   
   // Move through displayed items consecutively
   currentGalleryIndex += direction;
   
   // Wrap around in a cycle
   if (currentGalleryIndex < 0) {
-    currentGalleryIndex = galleryItemIndices.length - 1;
-  } else if (currentGalleryIndex >= galleryItemIndices.length) {
+    currentGalleryIndex = displayedGalleryItems.length - 1;
+  } else if (currentGalleryIndex >= displayedGalleryItems.length) {
     currentGalleryIndex = 0;
   }
   
