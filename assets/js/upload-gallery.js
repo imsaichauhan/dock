@@ -207,7 +207,15 @@ function uploadFilesSimplified() {
   const uploadPromises = selectedFiles.map((file, index) => {
     return new Promise((resolve, reject) => {
       const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
+      let timeoutId = setTimeout(() => {
+        if (window[callbackName]) {
+          console.error('Timeout waiting for callback:', callbackName);
+          reject('Timeout waiting for response');
+        }
+      }, 30000); // 30 second timeout
+      
       window[callbackName] = function(response) {
+        clearTimeout(timeoutId);
         // Remove the script element if it exists.
         const scriptElement = document.getElementById('upload-script-' + index);
         if (scriptElement) {
