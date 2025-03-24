@@ -34,7 +34,7 @@ let selectedFiles = [];
 let currentGalleryItems = []; // Full list in randomized order
 let allGalleryItems = [];     // Internal copy (shuffled) of fetched files
 let displayedItems = 0;       // How many items have been rendered so far
-const itemsPerLoad = 12;      // Number of items to load per batch
+const itemsPerLoad = 20;      // Changed from 12 to 20 items per load
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
 
@@ -265,7 +265,7 @@ function setupGalleryFunctionality() {
   // Refresh gallery every 5 minutes
   setInterval(fetchGalleryItems, 5 * 60 * 1000);
   if (viewMoreButton) {
-    viewMoreButton.addEventListener('click', displayGalleryItems);
+    viewMoreButton.addEventListener('click', loadMoreGalleryItems);
   }
 }
 
@@ -284,68 +284,105 @@ function handleGalleryResponse(data) {
   console.log("Gallery API response:", data);
 
   if (data && data.success && data.files) {
-    // On first load, shuffle the array for randomized order.
+    // Only reshuffle and reset if this is the first load or gallery is empty
     if (displayedItems === 0) {
       allGalleryItems = shuffleArray(data.files);
       currentGalleryItems = allGalleryItems;
+      displayGalleryItems();
+    } else {
+      // For subsequent refreshes, just update the items that haven't been displayed yet
+      // This prevents changing already displayed items
+      const newItems = shuffleArray(data.files);
+      // Keep the displayed items as they are
+      const displayedOnes = currentGalleryItems.slice(0, displayedItems);
+      // Append new items to the end (but don't display them yet)
+      currentGalleryItems = displayedOnes.concat(
+        newItems.filter(newItem => 
+          !displayedOnes.some(oldItem => oldItem.url === newItem.url)
+        )
+      );
+      // Update the view more button visibility
+      updateViewMoreButton();
     }
-    displayGalleryItems();
   } else {
     console.error("Gallery API error:", data);
-    galleryGrid.innerHTML = '<div class="gallery-error">Failed to load gallery.</div>';
+    if (displayedItems === 0) {
+      galleryGrid.innerHTML = '<div class="gallery-error">Failed to load gallery.</div>';
+    }
   }
 }
 
 function displayGalleryItems() {
-  // Determine new batch of items to show
-  const itemsToShow = currentGalleryItems.slice(0, displayedItems + itemsPerLoad);
+  // Display initial batch of items (first 20)
+  const itemsToShow = currentGalleryItems.slice(0, itemsPerLoad);
   galleryGrid.innerHTML = '';
   itemsToShow.forEach((file, index) => {
-    const item = document.createElement('div');
-    item.className = 'gallery-item';
-
-    const mediaContainer = document.createElement('div');
-    mediaContainer.className = 'media-container';
-
-    if (file.mimeType.startsWith('image/')) {
-      const img = document.createElement('img');
-      img.src = file.url;
-      img.alt = file.name;
-      img.loading = 'lazy';
-      img.onerror = function() {
-        this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-      };
-      mediaContainer.appendChild(img);
-    } else if (file.mimeType.startsWith('video/')) {
-      const videoWrapper = document.createElement('div');
-      videoWrapper.className = 'video-wrapper';
-
-      const iframe = document.createElement('iframe');
-      iframe.src = file.url;
-      iframe.frameBorder = '0';
-      iframe.allow = 'autoplay; fullscreen';
-      iframe.allowFullscreen = true;
-
-      videoWrapper.appendChild(iframe);
-      mediaContainer.appendChild(videoWrapper);
-    }
-
-    if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
-      const uploader = document.createElement('div');
-      uploader.className = 'gallery-uploader';
-      uploader.textContent = file.uploader;
-      mediaContainer.appendChild(uploader);
-    }
-
-    // Use the index from the sliced array; this maps correctly into currentGalleryItems.
-    mediaContainer.addEventListener('click', () => openFullscreen(index));
-    item.appendChild(mediaContainer);
-    galleryGrid.appendChild(item);
+    addGalleryItem(file, index);
   });
 
   displayedItems = itemsToShow.length;
+  updateViewMoreButton();
+}
 
-  // Hide "View More" button if all items are displayed
+function loadMoreGalleryItems() {
+  // Get next batch of items
+  const newItems = currentGalleryItems.slice(displayedItems, displayedItems + itemsPerLoad);
+  
+  // Append these items to the existing gallery
+  newItems.forEach((file, index) => {
+    // The actual index in the full array is displayedItems + index
+    addGalleryItem(file, displayedItems + index);
+  });
+  
+  // Update the displayed count
+  displayedItems += newItems.length;
+  updateViewMoreButton();
+}
+
+function addGalleryItem(file, index) {
+  const item = document.createElement('div');
+  item.className = 'gallery-item';
+
+  const mediaContainer = document.createElement('div');
+  mediaContainer.className = 'media-container';
+
+  if (file.mimeType.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.src = file.url;
+    img.alt = file.name;
+    img.loading = 'lazy';
+    img.onerror = function() {
+      this.src = CONFIG.FALLBACK_IMAGE || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    };
+    mediaContainer.appendChild(img);
+  } else if (file.mimeType.startsWith('video/')) {
+    const videoWrapper = document.createElement('div');
+    videoWrapper.className = 'video-wrapper';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = file.url;
+    iframe.frameBorder = '0';
+    iframe.allow = 'autoplay; fullscreen';
+    iframe.allowFullscreen = true;
+
+    videoWrapper.appendChild(iframe);
+    mediaContainer.appendChild(videoWrapper);
+  }
+
+  if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
+    const uploader = document.createElement('div');
+    uploader.className = 'gallery-uploader';
+    uploader.textContent = file.uploader;
+    mediaContainer.appendChild(uploader);
+  }
+
+  // Use the actual index from currentGalleryItems
+  mediaContainer.addEventListener('click', () => openFullscreen(index));
+  item.appendChild(mediaContainer);
+  galleryGrid.appendChild(item);
+}
+
+function updateViewMoreButton() {
   if (viewMoreButton) {
     viewMoreButton.style.display = (displayedItems >= currentGalleryItems.length) ? 'none' : 'block';
   }
@@ -406,7 +443,11 @@ function handleFullscreenBackgroundClick(event) {
 }
 
 function displayFullscreenItem() {
-  // Use currentGalleryItems for fullscreen navigation
+  // Ensure currentGalleryIndex is within bounds
+  if (currentGalleryIndex < 0 || currentGalleryIndex >= currentGalleryItems.length) {
+    currentGalleryIndex = 0;
+  }
+  
   const file = currentGalleryItems[currentGalleryIndex];
   fullscreenContent.innerHTML = '';
 
@@ -429,6 +470,8 @@ function displayFullscreenItem() {
 
 function navigateGallery(direction) {
   if (currentGalleryItems.length === 0) return;
+  
+  // Ensure we move consecutively through the gallery
   currentGalleryIndex = (currentGalleryIndex + direction + currentGalleryItems.length) % currentGalleryItems.length;
   displayFullscreenItem();
 }
