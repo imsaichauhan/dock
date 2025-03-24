@@ -32,10 +32,10 @@ const itemsPerLoad = 20;      // Load 20 items at a time
 let currentGalleryIndex = 0;
 let slideshowInterval = null;
 let sortedGalleryFiles = [];  // Visual order for fullscreen
-let sentinel = null;          // Moved to global scope for access across functions
+let sentinel = null;          // For infinite scrolling
 
 // ------------------------
-// Upload Functions (Simplified)
+// Upload Functions (Simplified & JSONP-based)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -88,7 +88,7 @@ function handleFileSelection(files) {
   if (!files || files.length === 0) return;
   
   selectedFiles = [];
-  // Clear the preview list completely; no per‑file progress text is added.
+  // Clear the preview list; no per‑file progress text is added.
   uploadPreviewList.innerHTML = '';
   let validFilesFound = false;
   
@@ -113,7 +113,7 @@ function handleFileSelection(files) {
     selectedFiles.push(file);
     validFilesFound = true;
     
-    // Create a simple thumbnail preview without any "Waiting..." text.
+    // Create a simple thumbnail preview.
     const previewItem = document.createElement('div');
     previewItem.className = 'upload-preview-item';
     previewItem.dataset.index = i;
@@ -140,7 +140,7 @@ function handleFileSelection(files) {
   
   if (validFilesFound) {
     uploadPreviewContainer.classList.remove('hidden');
-    // Hide the progress container if it exists.
+    // Hide any progress container if present.
     const progressContainer = document.getElementById('upload-progress-container');
     if (progressContainer) progressContainer.classList.add('hidden');
     uploadButton.disabled = false;
@@ -166,7 +166,6 @@ function clearFileSelection() {
   fileInput.value = '';
   showUploadMessage('', '');
   
-  // Also hide the progress container if it exists.
   const progressContainer = document.getElementById('upload-progress-container');
   if (progressContainer) progressContainer.classList.add('hidden');
 }
@@ -190,33 +189,33 @@ function uploadFilesSimplified() {
   
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
   
-  // Disable the UI during the upload process.
+  // Disable UI during upload.
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
   fileInput.disabled = true;
   uploadDropzone.style.pointerEvents = 'none';
   
-  // Hide the progress container if it exists.
   const progressContainer = document.getElementById('upload-progress-container');
   if (progressContainer) progressContainer.classList.add('hidden');
   
-  // Show overall uploading message.
   showUploadMessage('Uploading files, please wait...', '');
   
-  // Create an array of upload promises (all run in parallel)
+  // Upload each file using the JSONP/iframe method.
   const uploadPromises = selectedFiles.map((file, index) => {
     return new Promise((resolve, reject) => {
       const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
-      let timeoutId = setTimeout(() => {
+      
+      // Set a 60-second timeout.
+      const timeoutId = setTimeout(() => {
         if (window[callbackName]) {
-          console.error('Timeout waiting for callback:', callbackName);
-          reject('Timeout waiting for response');
+          delete window[callbackName];
         }
-      }, 30000); // 30 second timeout
+        reject('Timeout waiting for response');
+      }, 60000);
       
       window[callbackName] = function(response) {
         clearTimeout(timeoutId);
-        // Remove the script element if it exists.
+        // Remove the dynamically added script element if it exists.
         const scriptElement = document.getElementById('upload-script-' + index);
         if (scriptElement) {
           document.body.removeChild(scriptElement);
@@ -239,6 +238,7 @@ function uploadFilesSimplified() {
         url.searchParams.append('index', index);
         url.searchParams.append('callback', callbackName);
         
+        // Create a form to submit the file via an iframe.
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = url.toString();
@@ -264,14 +264,17 @@ function uploadFilesSimplified() {
         form.appendChild(input);
         document.body.appendChild(form);
         form.submit();
+        // Clean up the form element after a short delay.
         setTimeout(() => {
-          document.body.removeChild(form);
+          if (document.body.contains(form)) {
+            document.body.removeChild(form);
+          }
         }, 1000);
       };
       reader.readAsDataURL(file);
     });
   });
-
+  
   Promise.all(uploadPromises)
     .then(results => {
       // Re-enable UI after successful upload.
@@ -283,7 +286,7 @@ function uploadFilesSimplified() {
       clearFileSelection();
     })
     .catch(error => {
-      // Re-enable UI even if one or more uploads fail.
+      // Re-enable UI on error.
       uploadButton.disabled = false;
       clearFilesButton.disabled = false;
       fileInput.disabled = false;
@@ -301,16 +304,13 @@ function setupGalleryFunctionality() {
     return;
   }
   
-  // Remove any existing sentinel elements first to avoid duplicates
   const existingSentinel = document.getElementById('gallery-sentinel');
   if (existingSentinel) {
     existingSentinel.remove();
   }
   
-  // Clear the gallery grid before creating a new sentinel
   galleryGrid.innerHTML = '';
   
-  // Create a sentinel element for infinite scrolling
   sentinel = document.createElement('div');
   sentinel.id = 'gallery-sentinel';
   sentinel.className = 'gallery-sentinel';
@@ -338,9 +338,9 @@ function handleGalleryResponse(data) {
   if (scriptTag) {
     document.body.removeChild(scriptTag);
   }
-
+  
   console.log("Gallery API response:", data);
-
+  
   if (data && data.success && data.files && data.files.length > 0) {
     if (displayedItems === 0) {
       currentGalleryItems = shuffleArray(data.files);
@@ -349,7 +349,7 @@ function handleGalleryResponse(data) {
       const newItems = shuffleArray(data.files);
       const displayedOnes = currentGalleryItems.slice(0, displayedItems);
       currentGalleryItems = displayedOnes.concat(
-        newItems.filter(newItem => 
+        newItems.filter(newItem =>
           !displayedOnes.some(oldItem => oldItem.url === newItem.url)
         )
       );
@@ -378,10 +378,10 @@ function addGalleryItem(file) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
   item.fileData = file;
-
+  
   const mediaContainer = document.createElement('div');
   mediaContainer.className = 'media-container';
-
+  
   if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
     img.src = file.url;
@@ -402,14 +402,14 @@ function addGalleryItem(file) {
     videoWrapper.appendChild(iframe);
     mediaContainer.appendChild(videoWrapper);
   }
-
+  
   if (CONFIG.GALLERY.SHOW_UPLOADER_NAMES && file.uploader) {
     const uploader = document.createElement('div');
     uploader.className = 'gallery-uploader';
     uploader.textContent = file.uploader;
     mediaContainer.appendChild(uploader);
   }
-
+  
   mediaContainer.addEventListener('click', () => {
     rebuildSortedGalleryFiles();
     const index = sortedGalleryFiles.findIndex(f => f.url === file.url);
@@ -504,7 +504,7 @@ function displayFullscreenItem() {
   if (!file) return;
   
   fullscreenContent.innerHTML = '';
-
+  
   if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
     img.src = file.url.replace('&sz=w1000', '&sz=w1920');
@@ -517,7 +517,7 @@ function displayFullscreenItem() {
     iframe.frameBorder = '0';
     fullscreenContent.appendChild(iframe);
   }
-
+  
   fullscreenCaption.textContent = file.name;
 }
 
