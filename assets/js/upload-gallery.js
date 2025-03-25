@@ -35,7 +35,7 @@ let sortedGalleryFiles = [];  // Visual order for fullscreen
 let sentinel = null;          // For infinite scrolling
 
 // ------------------------
-// Upload Functions (Simplified & JSONP-based, Sequential Uploads)
+// Upload Functions (Simplified & JSONP-based)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -88,7 +88,7 @@ function handleFileSelection(files) {
   if (!files || files.length === 0) return;
   
   selectedFiles = [];
-  // Clear the preview list completely.
+  // Clear the preview list; no per‑file progress text is added.
   uploadPreviewList.innerHTML = '';
   let validFilesFound = false;
   
@@ -140,6 +140,7 @@ function handleFileSelection(files) {
   
   if (validFilesFound) {
     uploadPreviewContainer.classList.remove('hidden');
+    // Hide any progress container if present.
     const progressContainer = document.getElementById('upload-progress-container');
     if (progressContainer) progressContainer.classList.add('hidden');
     uploadButton.disabled = false;
@@ -174,85 +175,7 @@ function showUploadMessage(message, type) {
   uploadMessage.className = 'upload-message ' + type;
 }
 
-// Upload a single file using the JSONP/iframe method.
-// Returns a Promise that resolves or rejects based on the server response.
-function uploadSingleFile(file, index, inviteCode, guestName) {
-  return new Promise((resolve, reject) => {
-    const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
-    
-    // Set a 60-second timeout.
-    const timeoutId = setTimeout(() => {
-      if (window[callbackName]) {
-        delete window[callbackName];
-      }
-      reject('Timeout waiting for response');
-    }, 60000);
-    
-    window[callbackName] = function(response) {
-      clearTimeout(timeoutId);
-      const scriptElement = document.getElementById('upload-script-' + index);
-      if (scriptElement) {
-        document.body.removeChild(scriptElement);
-      }
-      delete window[callbackName];
-      if (response.success) {
-        resolve(response);
-      } else {
-        reject(response.error || 'Upload failed.');
-      }
-    };
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const base64Data = e.target.result.split(',')[1];
-      const url = new URL(CONFIG.UPLOAD_GALLERY_API_URL);
-      url.searchParams.append('fileUpload', 'true');
-      url.searchParams.append('inviteCode', inviteCode);
-      url.searchParams.append('guestName', guestName);
-      url.searchParams.append('index', index);
-      url.searchParams.append('callback', callbackName);
-      
-      // Create a form to submit via an iframe.
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = url.toString();
-      const iframeId = 'upload-iframe-' + index;
-      let iframe = document.getElementById(iframeId);
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = iframeId;
-        iframe.name = iframeId;
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-      }
-      form.target = iframeId;
-      form.enctype = 'application/json';
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'json';
-      input.value = JSON.stringify({
-        fileData: base64Data,
-        fileName: file.name,
-        mimeType: file.type
-      });
-      form.appendChild(input);
-      document.body.appendChild(form);
-      form.submit();
-      setTimeout(() => {
-        if (document.body.contains(form)) {
-          document.body.removeChild(form);
-        }
-      }, 1000);
-    };
-    reader.onerror = function(err) {
-      reject(err);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// Sequentially upload files one after another.
-async function uploadFilesSimplified() {
+function uploadFilesSimplified() {
   if (selectedFiles.length === 0) {
     showUploadMessage('No files selected.', 'error');
     return;
@@ -266,7 +189,7 @@ async function uploadFilesSimplified() {
   
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
   
-  // Disable the UI during the upload process.
+  // Disable UI during upload.
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
   fileInput.disabled = true;
@@ -277,21 +200,99 @@ async function uploadFilesSimplified() {
   
   showUploadMessage('Uploading files, please wait...', '');
   
-  try {
-    for (let i = 0; i < selectedFiles.length; i++) {
-      await uploadSingleFile(selectedFiles[i], i, inviteCode, guestName);
-    }
-    showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
-    clearFileSelection();
-  } catch (error) {
-    showUploadMessage('Upload failed: ' + error, 'error');
-  } finally {
-    // Re-enable the UI.
-    uploadButton.disabled = false;
-    clearFilesButton.disabled = false;
-    fileInput.disabled = false;
-    uploadDropzone.style.pointerEvents = '';
-  }
+  // Upload each file using the JSONP/iframe method.
+  const uploadPromises = selectedFiles.map((file, index) => {
+    return new Promise((resolve, reject) => {
+      const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
+      
+      // Set a 60-second timeout.
+      const timeoutId = setTimeout(() => {
+        if (window[callbackName]) {
+          delete window[callbackName];
+        }
+        reject('Timeout waiting for response');
+      }, 60000);
+      
+      window[callbackName] = function(response) {
+        clearTimeout(timeoutId);
+        // Remove the dynamically added script element if it exists.
+        const scriptElement = document.getElementById('upload-script-' + index);
+        if (scriptElement) {
+          document.body.removeChild(scriptElement);
+        }
+        delete window[callbackName];
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(response.error || 'Upload failed.');
+        }
+      };
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Data = e.target.result.split(',')[1];
+        const url = new URL(CONFIG.UPLOAD_GALLERY_API_URL);
+        url.searchParams.append('fileUpload', 'true');
+        url.searchParams.append('inviteCode', inviteCode);
+        url.searchParams.append('guestName', guestName);
+        url.searchParams.append('index', index);
+        url.searchParams.append('callback', callbackName);
+        
+        // Create a form to submit the file via an iframe.
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url.toString();
+        const iframeId = 'upload-iframe-' + index;
+        let iframe = document.getElementById(iframeId);
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = iframeId;
+          iframe.name = iframeId;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+        }
+        form.target = iframeId;
+        form.enctype = 'application/json';
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'json';
+        input.value = JSON.stringify({
+          fileData: base64Data,
+          fileName: file.name,
+          mimeType: file.type
+        });
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        // Clean up the form element after a short delay.
+        setTimeout(() => {
+          if (document.body.contains(form)) {
+            document.body.removeChild(form);
+          }
+        }, 1000);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+  
+  Promise.all(uploadPromises)
+    .then(results => {
+      // Re-enable UI after successful upload.
+      uploadButton.disabled = false;
+      clearFilesButton.disabled = false;
+      fileInput.disabled = false;
+      uploadDropzone.style.pointerEvents = '';
+      showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
+      clearFileSelection();
+    })
+    .catch(error => {
+      // Re-enable UI on error.
+      uploadButton.disabled = false;
+      clearFilesButton.disabled = false;
+      fileInput.disabled = false;
+      uploadDropzone.style.pointerEvents = '';
+      showUploadMessage('Upload failed: ' + error, 'error');
+    });
 }
 
 // ------------------------
