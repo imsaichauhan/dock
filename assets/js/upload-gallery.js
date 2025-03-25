@@ -2,16 +2,9 @@
 // DOM Elements
 // ------------------------
 const uploadSection = document.getElementById('upload-section');
-const gallerySection = document.getElementById('gallery-section');
-const uploadDropzone = document.getElementById('upload-dropzone');
-const fileInput = document.getElementById('file-input');
-const uploadButton = document.getElementById('upload-button');
-const clearFilesButton = document.getElementById('clear-files-button');
-const uploadPreviewContainer = document.getElementById('upload-preview-container');
-const uploadPreviewList = document.getElementById('upload-preview-list');
-const uploadMessage = document.getElementById('upload-message');
-const galleryGrid = document.getElementById('gallery-grid');
 const driveLink = document.getElementById('drive-link');
+const gallerySection = document.getElementById('gallery-section');
+const galleryGrid = document.getElementById('gallery-grid');
 const galleryFullscreen = document.getElementById('gallery-fullscreen');
 const fullscreenContent = document.getElementById('fullscreen-content');
 const fullscreenCaption = document.getElementById('fullscreen-caption');
@@ -23,9 +16,8 @@ const galleryNavItem = document.getElementById('gallery-nav-item');
 const uploadNavItem = document.getElementById('upload-nav-item');
 
 // ------------------------
-// Global Variables
+// Global Variables for Gallery
 // ------------------------
-let selectedFiles = [];
 let currentGalleryItems = []; // All fetched items (shuffled)
 let displayedItems = 0;       // Number of items currently rendered
 const itemsPerLoad = 20;      // Load 20 items at a time
@@ -35,225 +27,33 @@ let sortedGalleryFiles = [];  // Visual order for fullscreen
 let sentinel = null;          // For infinite scrolling
 
 // ------------------------
-// Upload Functions (Updated for Direct Google Drive Upload)
+// Setup Google Drive Upload Link (Simplified Upload Section)
 // ------------------------
-function setupUploadFunctionality() {
-  if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
-    console.error('Missing upload DOM elements');
+function setupUploadSection() {
+  if (!uploadSection || !driveLink) {
+    console.error('Missing upload DOM elements for upload section');
     return;
   }
   
-  uploadDropzone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadDropzone.classList.add('dropzone-active');
-  });
+  // Set your Google Drive folder URL here.
+  // You can configure it in your CONFIG object as CONFIG.GOOGLE_DRIVE_UPLOAD_URL
+  const googleDriveURL = CONFIG.GOOGLE_DRIVE_UPLOAD_URL || 'https://drive.google.com/drive/u/0/folders/1MqkUXBe9UPVSQGaL70ROPhz7X8AIMXyc';
   
-  uploadDropzone.addEventListener('dragleave', () => {
-    uploadDropzone.classList.remove('dropzone-active');
-  });
+  driveLink.href = googleDriveURL;
+  driveLink.textContent = 'Click here to upload files to Google Drive';
+  driveLink.target = '_blank';
   
-  uploadDropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadDropzone.classList.remove('dropzone-active');
-    handleFileSelection(e.dataTransfer.files);
-  });
-  
-  uploadDropzone.addEventListener('click', () => {
-    fileInput.click();
-  });
-  
-  fileInput.addEventListener('change', () => {
-    handleFileSelection(fileInput.files);
-  });
-  
-  // Updated to use direct upload function
-  uploadButton.addEventListener('click', uploadFilesToGoogleDrive);
-  clearFilesButton.addEventListener('click', clearFileSelection);
-  
-  if (fullscreenClose) {
-    fullscreenClose.addEventListener('click', closeFullscreen);
-  }
-  if (fullscreenPrev) {
-    fullscreenPrev.addEventListener('click', () => navigateGallery(-1));
-  }
-  if (fullscreenNext) {
-    fullscreenNext.addEventListener('click', () => navigateGallery(1));
-  }
-  if (fullscreenPlay) {
-    fullscreenPlay.addEventListener('click', toggleSlideshow);
-  }
-}
-
-function getFileExtension(filename) {
-  return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
-}
-
-function handleFileSelection(files) {
-  if (!files || files.length === 0) return;
-  
-  selectedFiles = [];
-  // Clear the preview list; no per‑file progress text is added.
-  uploadPreviewList.innerHTML = '';
-  let validFilesFound = false;
-  
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const fileType = getFileExtension(file.name).toLowerCase();
-    const isImage = CONFIG.UPLOAD.ALLOWED_IMAGE_TYPES.includes(`.${fileType}`);
-    const isVideo = CONFIG.UPLOAD.ALLOWED_VIDEO_TYPES.includes(`.${fileType}`);
-    
-    if (!isImage && !isVideo) {
-      showUploadMessage(`File "${file.name}" is not an allowed type.`, 'error');
-      continue;
-    }
-    
-    const maxSize = isImage ? CONFIG.UPLOAD.MAX_IMAGE_SIZE : CONFIG.UPLOAD.MAX_VIDEO_SIZE;
-    const fileSizeMB = file.size / (1024 * 1024);
-    if (fileSizeMB > maxSize) {
-      showUploadMessage(`File "${file.name}" exceeds the maximum size of ${maxSize}MB.`, 'error');
-      continue;
-    }
-    
-    selectedFiles.push(file);
-    validFilesFound = true;
-    
-    // Create a simple thumbnail preview.
-    const previewItem = document.createElement('div');
-    previewItem.className = 'upload-preview-item';
-    previewItem.dataset.index = i;
-    
-    const previewThumb = document.createElement('div');
-    previewThumb.className = 'preview-thumbnail';
-    
-    if (isImage) {
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      img.loading = 'lazy';
-      img.onload = () => URL.revokeObjectURL(img.src);
-      previewThumb.appendChild(img);
-    } else if (isVideo) {
-      const videoIcon = document.createElement('div');
-      videoIcon.className = 'preview-video-icon';
-      videoIcon.innerHTML = '🎥';
-      previewThumb.appendChild(videoIcon);
-    }
-    
-    previewItem.appendChild(previewThumb);
-    uploadPreviewList.appendChild(previewItem);
-  }
-  
-  if (validFilesFound) {
-    uploadPreviewContainer.classList.remove('hidden');
-    // Hide any progress container if present.
-    const progressContainer = document.getElementById('upload-progress-container');
-    if (progressContainer) progressContainer.classList.add('hidden');
-    uploadButton.disabled = false;
-    clearFilesButton.classList.remove('hidden');
-    showUploadMessage('', '');
-  } else {
-    uploadPreviewContainer.classList.add('hidden');
-    uploadButton.disabled = true;
-    clearFilesButton.classList.add('hidden');
-  }
-}
-
-function showUploadMessage(message, type) {
-  uploadMessage.textContent = message;
-  uploadMessage.className = 'upload-message ' + type;
-}
-
-function clearFileSelection() {
-  selectedFiles = [];
-  uploadPreviewList.innerHTML = '';
-  uploadPreviewContainer.classList.add('hidden');
-  uploadButton.disabled = true;
-  clearFilesButton.classList.add('hidden');
-  fileInput.value = '';
-  showUploadMessage('', '');
-  
-  const progressContainer = document.getElementById('upload-progress-container');
-  if (progressContainer) progressContainer.classList.add('hidden');
-}
-
-function uploadFilesToGoogleDrive() {
-  if (selectedFiles.length === 0) {
-    showUploadMessage('No files selected.', 'error');
-    return;
-  }
-  
-  const inviteCode = document.getElementById('invite-code').value.trim();
-  if (!inviteCode) {
-    showUploadMessage('Missing invite code. Please refresh and log in again.', 'error');
-    return;
-  }
-  
-  const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
-  
-  if (!guestName) {
-    showUploadMessage('Guest name is required.', 'error');
-    return;
-  }
-  
-  // Disable UI during upload
-  uploadButton.disabled = true;
-  clearFilesButton.disabled = true;
-  fileInput.disabled = true;
-  uploadDropzone.style.pointerEvents = 'none';
-  
-  // Create a single form for multiple file uploads
-  const formData = new FormData();
-  
-  // Add invite code and guest name to form data
-  formData.append('inviteCode', inviteCode);
-  formData.append('guestName', guestName);
-  
-  // Add files to form data with sequential naming
-  selectedFiles.forEach((file, index) => {
-    const fileExtension = getFileExtension(file.name);
-    const renamedFile = new File(
-      [file], 
-      `${guestName}${index + 1}.${fileExtension}`, 
-      { type: file.type }
-    );
-    formData.append('files', renamedFile);
-  });
-  
-  // Show uploading message
-  showUploadMessage('Uploading files, please wait...', '');
-  
-  // Perform the upload
-  fetch(CONFIG.UPLOAD_GALLERY_API_URL, {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      // Re-enable UI after successful upload
-      uploadButton.disabled = false;
-      clearFilesButton.disabled = false;
-      fileInput.disabled = false;
-      uploadDropzone.style.pointerEvents = '';
-      
-      showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
-      clearFileSelection();
-    } else {
-      throw new Error(data.error || 'Upload failed');
-    }
-  })
-  .catch(error => {
-    // Re-enable UI on error
-    uploadButton.disabled = false;
-    clearFilesButton.disabled = false;
-    fileInput.disabled = false;
-    uploadDropzone.style.pointerEvents = '';
-    
-    showUploadMessage('Upload failed: ' + error.message, 'error');
-  });
+  // Hide any elements related to file upload that are no longer used.
+  const fileInput = document.getElementById('file-input');
+  const uploadButton = document.getElementById('upload-button');
+  const clearFilesButton = document.getElementById('clear-files-button');
+  if (fileInput) fileInput.style.display = 'none';
+  if (uploadButton) uploadButton.style.display = 'none';
+  if (clearFilesButton) clearFilesButton.style.display = 'none';
 }
 
 // ------------------------
-// Gallery Functions (unchanged from original)
+// Gallery Functions (unchanged)
 // ------------------------
 function setupGalleryFunctionality() {
   if (!gallerySection || !galleryGrid) {
@@ -461,6 +261,7 @@ function displayFullscreenItem() {
   
   if (file.mimeType.startsWith('image/')) {
     const img = document.createElement('img');
+    // Adjusting size parameter for a higher resolution if needed
     img.src = file.url.replace('&sz=w1000', '&sz=w1920');
     img.alt = file.name;
     fullscreenContent.appendChild(img);
@@ -503,19 +304,18 @@ function toggleSlideshow() {
 // Initialization
 // ------------------------
 function setupUploadGallerySections() {
-  const uploadSection = document.getElementById('upload-section');
-  const uploadNavItem = document.getElementById('upload-nav-item');
-  const gallerySection = document.getElementById('gallery-section');
-  const galleryNavItem = document.getElementById('gallery-nav-item');
+  // Setup Upload Section with Google Drive link if enabled
   if (uploadSection && uploadNavItem) {
     if (CONFIG.UPLOAD.ENABLED) {
       uploadNavItem.classList.remove('hidden');
-      setupUploadFunctionality();
+      setupUploadSection();
     } else {
       uploadSection.classList.add('hidden');
       uploadNavItem.classList.add('hidden');
     }
   }
+  
+  // Setup Gallery Section if enabled
   if (gallerySection && galleryNavItem) {
     if (CONFIG.GALLERY.ENABLED) {
       galleryNavItem.classList.remove('hidden');
