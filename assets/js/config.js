@@ -6,13 +6,13 @@ const CONFIG = {
 
   EVENT: {
     DATE_TIME: 'March 25, 2025 at 11:30 AM',
-    VENUE: "Nice try, Sherlock, but you'll have to wait!",
-    VENUE_VIDEO: 'https://www.youtube.com/',
-    GOOGLE_MAPS: 'https://www.youtube.com/',
-    ITEMS: "A+ for effort, but no spoilers! Just bring your party energy when it's time!"
+    VENUE: "Barefoot Bay Villa, ECR",
+    VENUE_VIDEO: 'https://drive.google.com/file/d/14UyMH_1BoVJEhveb0byma1sLM1RwKNcP/view?usp=sharing',
+    GOOGLE_MAPS: 'https://goo.gl/maps/HvZ8W8VJFQF8vo7c7',
+    ITEMS: "Questionable moves? Check. Poolside essentials? Check. 24-hour party mode? Double check!"
   },
 
-  TARGET_DATE: new Date(2025, 2, 25, 9, 30, 0),
+  TARGET_DATE: new Date(2025, 2, 25, 11, 30, 0),
   REVEAL_VENUE: true,
 
   HERO: {
