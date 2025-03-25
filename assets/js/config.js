@@ -41,7 +41,7 @@ const CONFIG = {
     },
     // New configurations for upload and gallery features
     UPLOAD: {
-      ENABLED: true, // Ensure this is set to true
+      ENABLED: false, // Ensure this is set to true
       MAX_IMAGE_SIZE: 10, // In MB  UPDATE IN APPS SCRIPT
       MAX_VIDEO_SIZE: 300, // In MB
       ALLOWED_IMAGE_TYPES: ['.jpg', '.jpeg', '.png', '.webp', '.gif'],
