@@ -50,7 +50,7 @@ const CONFIG = {
     GALLERY: {
       ENABLED: true, // Changed to true to enable gallery functionality
       SHOW_UPLOADER_NAMES: true,
-      PUBLIC_DRIVE_LINK: 'https://drive.google.com/drive/u/0/folders/1KJVH80k1YT-MWGr2OLzwLxtA1sUnlgB2',
+      PUBLIC_DRIVE_LINK: 'https://drive.google.com/drive/u/0/folders/1MqkUXBe9UPVSQGaL70ROPhz7X8AIMXyc',
       LAZY_LOAD: true
     }
   };
