@@ -136,31 +136,11 @@
       <section id="upload-section" class="upload-section hidden">
         <div class="container">
           <h2>Share Your Memories</h2>
-          <p>Upload your favorite photos and videos to add to our celebration gallery!</p>
+          <p>Upload your favorite photos and videos by clicking the link below to open our Google Drive folder.</p>
           <div class="upload-container">
-            <div class="upload-dropzone" id="upload-dropzone">
-              <div class="upload-icon">📸</div>
-              <p>Drag & drop files here or click to browse</p>
-              <p class="upload-limits">
-                Images (JPG, PNG, WEBP, GIF) up to 10MB<br>
-                Videos (MP4, MOV, AVI) up to 300MB
-              </p>
-              <input type="file" id="file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi" class="file-input">
-            </div>
-            <div class="upload-preview-container hidden" id="upload-preview-container">
-              <div id="upload-preview-list" class="upload-preview-list"></div>
-            </div>
-            <div class="upload-progress-container hidden" id="upload-progress-container">
-              <div class="upload-progress-bar-wrapper">
-                <div id="upload-progress-bar" class="upload-progress-bar"></div>
-              </div>
-              <p id="upload-progress-text">0% Complete</p>
-            </div>
-            <div class="upload-actions">
-              <button id="upload-button" class="btn upload-btn" disabled>Upload Files</button>
-              <button id="clear-files-button" class="btn clear-btn hidden">Clear Selection</button>
-            </div>
-            <div id="upload-message" class="upload-message"></div>
+            <a id="drive-link" href="#" target="_blank" class="btn drive-btn">
+              Click here to upload files to Google Drive
+            </a>
           </div>
         </div>
       </section>
