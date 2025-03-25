@@ -229,14 +229,12 @@
     <button id="fullscreen-play">▶</button>
   </div>
 
-  <!-- Config script must come first -->
+  <!-- Script Order: config and effects first, then upload-gallery.js to initialize driveLink before main.js -->
   <script src="assets/js/config.js"></script>
-  <!-- Load effects.js before main.js so that global functions are available -->
   <script src="assets/js/effects.js"></script>
+  <script src="assets/js/upload-gallery.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="assets/js/countdown.js"></script>
   <script src="assets/js/carousel.js"></script>
-  <!-- NEW: Upload & Gallery Script -->
-  <script src="assets/js/upload-gallery.js"></script>
 </body>
 </html>
