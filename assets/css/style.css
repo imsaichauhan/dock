@@ -1236,3 +1236,10 @@ nav {
     height: 100%;
   }
 }
+
+.drive-logo {
+    width: 24px;
+    height: auto;
+    vertical-align: middle;
+    margin-right: 8px;
+}
