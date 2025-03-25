@@ -31,7 +31,7 @@ const CONFIG = {
   },
 
   UPLOAD: {
-    ENABLED: true,
+    ENABLED: false,
     DRIVE_LINK: 'https://drive.google.com/drive/u/0/folders/1MqkUXBe9UPVSQGaL70ROPhz7X8AIMXyc'
   },
 
