@@ -12,7 +12,7 @@ const CONFIG = {
     ITEMS: "A+ for effort, but no spoilers! Just bring your party energy when it's time!"
   },
 
-  TARGET_DATE: new Date(2025, 2, 24, 11, 30, 0),
+  TARGET_DATE: new Date(2025, 2, 25, 9, 30, 0),
   REVEAL_VENUE: true,
 
   HERO: {
@@ -36,7 +36,7 @@ const CONFIG = {
   },
 
   GALLERY: {
-    ENABLED: true,
+    ENABLED: false,
     SHOW_UPLOADER_NAMES: false,
     LAZY_LOAD: true
   }
