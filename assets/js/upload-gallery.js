@@ -35,7 +35,7 @@ let sortedGalleryFiles = [];  // Visual order for fullscreen
 let sentinel = null;          // For infinite scrolling
 
 // ------------------------
-// Upload Functions (Simplified & JSONP-based)
+// Upload Functions (Updated for Direct Google Drive Upload)
 // ------------------------
 function setupUploadFunctionality() {
   if (!uploadDropzone || !fileInput || !uploadButton || !clearFilesButton) {
@@ -66,8 +66,8 @@ function setupUploadFunctionality() {
     handleFileSelection(fileInput.files);
   });
   
-  // Use the simplified upload function.
-  uploadButton.addEventListener('click', uploadFilesSimplified);
+  // Updated to use direct upload function
+  uploadButton.addEventListener('click', uploadFilesToGoogleDrive);
   clearFilesButton.addEventListener('click', clearFileSelection);
   
   if (fullscreenClose) {
@@ -82,6 +82,10 @@ function setupUploadFunctionality() {
   if (fullscreenPlay) {
     fullscreenPlay.addEventListener('click', toggleSlideshow);
   }
+}
+
+function getFileExtension(filename) {
+  return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
 }
 
 function handleFileSelection(files) {
@@ -153,8 +157,9 @@ function handleFileSelection(files) {
   }
 }
 
-function getFileExtension(filename) {
-  return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
+function showUploadMessage(message, type) {
+  uploadMessage.textContent = message;
+  uploadMessage.className = 'upload-message ' + type;
 }
 
 function clearFileSelection() {
@@ -170,12 +175,7 @@ function clearFileSelection() {
   if (progressContainer) progressContainer.classList.add('hidden');
 }
 
-function showUploadMessage(message, type) {
-  uploadMessage.textContent = message;
-  uploadMessage.className = 'upload-message ' + type;
-}
-
-function uploadFilesSimplified() {
+function uploadFilesToGoogleDrive() {
   if (selectedFiles.length === 0) {
     showUploadMessage('No files selected.', 'error');
     return;
@@ -189,114 +189,71 @@ function uploadFilesSimplified() {
   
   const guestName = window.guestName || (document.getElementById('guest-name') ? document.getElementById('guest-name').textContent.trim() : "");
   
-  // Disable UI during upload.
+  if (!guestName) {
+    showUploadMessage('Guest name is required.', 'error');
+    return;
+  }
+  
+  // Disable UI during upload
   uploadButton.disabled = true;
   clearFilesButton.disabled = true;
   fileInput.disabled = true;
   uploadDropzone.style.pointerEvents = 'none';
   
-  const progressContainer = document.getElementById('upload-progress-container');
-  if (progressContainer) progressContainer.classList.add('hidden');
+  // Create a single form for multiple file uploads
+  const formData = new FormData();
   
-  showUploadMessage('Uploading files, please wait...', '');
+  // Add invite code and guest name to form data
+  formData.append('inviteCode', inviteCode);
+  formData.append('guestName', guestName);
   
-  // Upload each file using the JSONP/iframe method.
-  const uploadPromises = selectedFiles.map((file, index) => {
-    return new Promise((resolve, reject) => {
-      const callbackName = 'uploadCallback_' + Date.now() + '_' + index;
-      
-      // Set a 60-second timeout.
-      const timeoutId = setTimeout(() => {
-        if (window[callbackName]) {
-          delete window[callbackName];
-        }
-        reject('Timeout waiting for response');
-      }, 60000);
-      
-      window[callbackName] = function(response) {
-        clearTimeout(timeoutId);
-        // Remove the dynamically added script element if it exists.
-        const scriptElement = document.getElementById('upload-script-' + index);
-        if (scriptElement) {
-          document.body.removeChild(scriptElement);
-        }
-        delete window[callbackName];
-        if (response.success) {
-          resolve(response);
-        } else {
-          reject(response.error || 'Upload failed.');
-        }
-      };
-      
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const base64Data = e.target.result.split(',')[1];
-        const url = new URL(CONFIG.UPLOAD_GALLERY_API_URL);
-        url.searchParams.append('fileUpload', 'true');
-        url.searchParams.append('inviteCode', inviteCode);
-        url.searchParams.append('guestName', guestName);
-        url.searchParams.append('index', index);
-        url.searchParams.append('callback', callbackName);
-        
-        // Create a form to submit the file via an iframe.
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url.toString();
-        const iframeId = 'upload-iframe-' + index;
-        let iframe = document.getElementById(iframeId);
-        if (!iframe) {
-          iframe = document.createElement('iframe');
-          iframe.id = iframeId;
-          iframe.name = iframeId;
-          iframe.style.display = 'none';
-          document.body.appendChild(iframe);
-        }
-        form.target = iframeId;
-        form.enctype = 'application/json';
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'json';
-        input.value = JSON.stringify({
-          fileData: base64Data,
-          fileName: file.name,
-          mimeType: file.type
-        });
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-        // Clean up the form element after a short delay.
-        setTimeout(() => {
-          if (document.body.contains(form)) {
-            document.body.removeChild(form);
-          }
-        }, 1000);
-      };
-      reader.readAsDataURL(file);
-    });
+  // Add files to form data with sequential naming
+  selectedFiles.forEach((file, index) => {
+    const fileExtension = getFileExtension(file.name);
+    const renamedFile = new File(
+      [file], 
+      `${guestName}${index + 1}.${fileExtension}`, 
+      { type: file.type }
+    );
+    formData.append('files', renamedFile);
   });
   
-  Promise.all(uploadPromises)
-    .then(results => {
-      // Re-enable UI after successful upload.
+  // Show uploading message
+  showUploadMessage('Uploading files, please wait...', '');
+  
+  // Perform the upload
+  fetch(CONFIG.UPLOAD_GALLERY_API_URL, {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Re-enable UI after successful upload
       uploadButton.disabled = false;
       clearFilesButton.disabled = false;
       fileInput.disabled = false;
       uploadDropzone.style.pointerEvents = '';
+      
       showUploadMessage('Files uploaded successfully! They will appear after approval.', 'success');
       clearFileSelection();
-    })
-    .catch(error => {
-      // Re-enable UI on error.
-      uploadButton.disabled = false;
-      clearFilesButton.disabled = false;
-      fileInput.disabled = false;
-      uploadDropzone.style.pointerEvents = '';
-      showUploadMessage('Upload failed: ' + error, 'error');
-    });
+    } else {
+      throw new Error(data.error || 'Upload failed');
+    }
+  })
+  .catch(error => {
+    // Re-enable UI on error
+    uploadButton.disabled = false;
+    clearFilesButton.disabled = false;
+    fileInput.disabled = false;
+    uploadDropzone.style.pointerEvents = '';
+    
+    showUploadMessage('Upload failed: ' + error.message, 'error');
+  });
 }
 
 // ------------------------
-// Gallery Functions (unchanged)
+// Gallery Functions (unchanged from original)
 // ------------------------
 function setupGalleryFunctionality() {
   if (!gallerySection || !galleryGrid) {
@@ -425,9 +382,6 @@ function rebuildSortedGalleryFiles() {
   sortedGalleryFiles = items.map(item => item.fileData);
 }
 
-// ------------------------
-// Infinite Scrolling Setup
-// ------------------------
 function setupInfiniteScroll() {
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
