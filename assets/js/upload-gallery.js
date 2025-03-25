@@ -36,7 +36,7 @@ function setupUploadSection() {
   }
   
   // Use the DRIVE_LINK from config.js
-  const driveURL = (CONFIG.UPLOAD && CONFIG.UPLOAD.DRIVE_LINK) || 
+  const driveURL = (CONFIG.UPLOAD && CONFIG.UPLOAD.DRIVE_LINK) ||
                    'https://drive.google.com/drive/u/0/folders/1MqkUXBe9UPVSQGaL70ROPhz7X8AIMXyc';
   
   uploadLink.href = driveURL;
