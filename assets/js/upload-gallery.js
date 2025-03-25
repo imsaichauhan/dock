@@ -2,7 +2,7 @@
 // DOM Elements
 // ------------------------
 const uploadSection = document.getElementById('upload-section');
-const driveLink = document.getElementById('drive-link');
+const uploadLink = document.getElementById('drive-link-upload'); // Updated element ID for upload link
 const gallerySection = document.getElementById('gallery-section');
 const galleryGrid = document.getElementById('gallery-grid');
 const galleryFullscreen = document.getElementById('gallery-fullscreen');
@@ -27,23 +27,23 @@ let sortedGalleryFiles = [];  // Visual order for fullscreen
 let sentinel = null;          // For infinite scrolling
 
 // ------------------------
-// Setup Google Drive Upload Link (Simplified Upload Section)
+// Setup Upload Section
 // ------------------------
 function setupUploadSection() {
-  if (!uploadSection || !driveLink) {
+  if (!uploadSection || !uploadLink) {
     console.error('Missing upload DOM elements for upload section');
     return;
   }
   
-  // Set your Google Drive folder URL here.
-  // You can configure it in your CONFIG object as CONFIG.GOOGLE_DRIVE_UPLOAD_URL
-  const googleDriveURL = CONFIG.GOOGLE_DRIVE_UPLOAD_URL || 'https://drive.google.com/drive/u/0/folders/1MqkUXBe9UPVSQGaL70ROPhz7X8AIMXyc';
+  // Use the DRIVE_LINK from config.js
+  const driveURL = (CONFIG.UPLOAD && CONFIG.UPLOAD.DRIVE_LINK) || 
+                   'https://drive.google.com/drive/u/0/folders/1MqkUXBe9UPVSQGaL70ROPhz7X8AIMXyc';
   
-  driveLink.href = googleDriveURL;
-  driveLink.textContent = 'Click here to upload files to Google Drive';
-  driveLink.target = '_blank';
+  uploadLink.href = driveURL;
+  uploadLink.textContent = 'Click here to upload files to Google Drive';
+  uploadLink.target = '_blank';
   
-  // Hide any elements related to file upload that are no longer used.
+  // Hide any elements related to the old file upload functionality.
   const fileInput = document.getElementById('file-input');
   const uploadButton = document.getElementById('upload-button');
   const clearFilesButton = document.getElementById('clear-files-button');
@@ -185,10 +185,8 @@ function rebuildSortedGalleryFiles() {
 function setupInfiniteScroll() {
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        if (displayedItems < currentGalleryItems.length) {
-          displayGalleryItems();
-        }
+      if (entry.isIntersecting && displayedItems < currentGalleryItems.length) {
+        displayGalleryItems();
       }
     });
   }, {
@@ -301,12 +299,12 @@ function toggleSlideshow() {
 }
 
 // ------------------------
-// Initialization
+// Initialization: Show/Hide Sections Based on Config
 // ------------------------
 function setupUploadGallerySections() {
-  // Setup Upload Section with Google Drive link if enabled
+  // Setup Upload Section if enabled
   if (uploadSection && uploadNavItem) {
-    if (CONFIG.UPLOAD.ENABLED) {
+    if (CONFIG.UPLOAD && CONFIG.UPLOAD.ENABLED) {
       uploadNavItem.classList.remove('hidden');
       setupUploadSection();
     } else {
@@ -317,7 +315,7 @@ function setupUploadGallerySections() {
   
   // Setup Gallery Section if enabled
   if (gallerySection && galleryNavItem) {
-    if (CONFIG.GALLERY.ENABLED) {
+    if (CONFIG.GALLERY && CONFIG.GALLERY.ENABLED) {
       galleryNavItem.classList.remove('hidden');
       setupGalleryFunctionality();
     } else {
