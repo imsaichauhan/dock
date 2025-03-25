@@ -12,8 +12,10 @@ const CONFIG = {
     ITEMS: "Questionable moves? Check. Poolside essentials? Check. 24-hour party mode? Double check!"
   },
 
-  TARGET_DATE: new Date(2025, 2, 25, 11, 30, 0),
+  TARGET_DATE: new Date(2025, 2, 25, 11, 30, 0), // March 25, 2025, at 11:30 AM
   REVEAL_VENUE: true,
+
+  PARTY_DURATION: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
 
   HERO: {
     BEFORE: {
