@@ -3,6 +3,7 @@
     // Photo data (captions removed)
     const photos = [
         'assets/img/photos/IMG_20250319_014729.webp',
+        'assets/img/photos/IMG_20250325_104528.jpg',
         'assets/img/photos/IMG_20250319_014821.webp',
         'assets/img/photos/IMG_20250319_014851.webp',
         'assets/img/photos/IMG_20250319_014941.webp',
