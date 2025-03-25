@@ -1,4 +1,3 @@
-// countdown.js
 // DOM Elements for individual countdown values
 const daysElement = document.getElementById('days');
 const hoursElement = document.getElementById('hours');
@@ -30,10 +29,13 @@ function updateCountdown() {
     const now = new Date();
     const diff = CONFIG.TARGET_DATE - now;
     const countdownContainer = document.getElementById('countdown');
-    
+
     // When event time has passed
     if (diff <= 0) {
         const elapsed = now - CONFIG.TARGET_DATE;
+        console.log("Elapsed time since event started (ms):", elapsed);
+        console.log("24-hour limit (ms):", CONFIG.PARTY_DURATION);
+
         // Hide the countdown timer container
         countdownContainer.style.display = "none";
         
