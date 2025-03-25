@@ -132,13 +132,13 @@
         </div>
       </div>
 
-      <!-- Upload Section -->
+      <!-- Upload Section (Share Your Memories) -->
       <section id="upload-section" class="upload-section hidden">
         <div class="container">
           <h2>Share Your Memories</h2>
           <p>Upload your favorite photos and videos by clicking the link below to open our Google Drive folder.</p>
           <div class="upload-container">
-            <a id="drive-link" href="#" target="_blank" class="btn drive-btn">
+            <a id="drive-link-upload" href="#" target="_blank" class="btn drive-btn">
               Click here to upload files to Google Drive
             </a>
           </div>
@@ -150,11 +150,7 @@
         <div class="container">
           <h2>Gallery</h2>
           <p>Check out our growing collection of memories!</p>
-          <div class="gallery-controls">
-            <a id="drive-link" href="#" target="_blank" class="btn drive-btn">
-              View All in Drive
-            </a>
-          </div>
+          <!-- No drive link is shown in the Gallery section -->
           <div id="gallery-grid" class="gallery-grid">
             <div class="gallery-loading">Loading gallery...</div>
           </div>
@@ -242,5 +238,14 @@
   <script src="assets/js/carousel.js"></script>
   <!-- NEW: Upload & Gallery Script -->
   <script src="assets/js/upload-gallery.js"></script>
+  <!-- Inline script to set the upload drive link dynamically from config.js -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var uploadLink = document.getElementById('drive-link-upload');
+      if (uploadLink && CONFIG && CONFIG.GALLERY && CONFIG.GALLERY.PUBLIC_DRIVE_LINK) {
+        uploadLink.href = CONFIG.GALLERY.PUBLIC_DRIVE_LINK;
+      }
+    });
+  </script>
 </body>
 </html>
