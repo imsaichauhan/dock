@@ -238,14 +238,5 @@
   <script src="assets/js/carousel.js"></script>
   <!-- NEW: Upload & Gallery Script -->
   <script src="assets/js/upload-gallery.js"></script>
-  <!-- Inline script to set the upload drive link dynamically from config.js -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var uploadLink = document.getElementById('drive-link-upload');
-      if (uploadLink && CONFIG && CONFIG.UPLOAD && CONFIG.UPLOAD.DRIVE_LINK) {
-        uploadLink.href = CONFIG.UPLOAD.DRIVE_LINK;
-      }
-    });
-  </script>
 </body>
 </html>
