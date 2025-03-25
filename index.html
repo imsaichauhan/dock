@@ -242,8 +242,8 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       var uploadLink = document.getElementById('drive-link-upload');
-      if (uploadLink && CONFIG && CONFIG.GALLERY && CONFIG.GALLERY.PUBLIC_DRIVE_LINK) {
-        uploadLink.href = CONFIG.GALLERY.PUBLIC_DRIVE_LINK;
+      if (uploadLink && CONFIG && CONFIG.UPLOAD && CONFIG.UPLOAD.DRIVE_LINK) {
+        uploadLink.href = CONFIG.UPLOAD.DRIVE_LINK;
       }
     });
   </script>
