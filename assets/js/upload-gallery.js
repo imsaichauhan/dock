@@ -327,4 +327,6 @@ function setupUploadGallerySections() {
 
 document.addEventListener('DOMContentLoaded', () => {
   setupUploadGallerySections();
+  // Create a global alias for driveLink for main.js compatibility
+  window.driveLink = uploadLink;
 });
