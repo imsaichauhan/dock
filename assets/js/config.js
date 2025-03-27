@@ -38,7 +38,7 @@ const CONFIG = {
   },
 
   GALLERY: {
-    ENABLED: false,
+    ENABLED: true,
     SHOW_UPLOADER_NAMES: false,
     LAZY_LOAD: true
   }
