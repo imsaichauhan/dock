@@ -38,8 +38,8 @@ const CONFIG = {
   },
 
   GALLERY: {
-    ENABLED: false,
-    SHOW_UPLOADER_NAMES: false,
+    ENABLED: true,
+    SHOW_UPLOADER_NAMES: true,
     LAZY_LOAD: true
   }
 };
